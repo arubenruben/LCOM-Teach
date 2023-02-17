@@ -5,6 +5,10 @@
 
 #include "i8254.h"
 
+uint64_t counter = 0;
+
+static int hook_id = 0;
+
 int(timer_set_frequency)(uint8_t timer, uint32_t freq)
 {
 
@@ -23,7 +27,6 @@ int(timer_set_frequency)(uint8_t timer, uint32_t freq)
     return -1;
   }
 
-
   // Select LSB of Status Register
   uint8_t first_four_st_bits = st & (BIT(0) | BIT(1) | BIT(2) | BIT(3));
 
@@ -32,7 +35,7 @@ int(timer_set_frequency)(uint8_t timer, uint32_t freq)
 
   // Set Timer Register
   uint8_t timer_register = (TIMER_0 + timer) << 6;
-  
+
   // Construct Control Word
   uint8_t control_word = timer_register | first_four_st_bits | initialization_mode;
 
@@ -65,24 +68,45 @@ int(timer_set_frequency)(uint8_t timer, uint32_t freq)
 
 int(timer_subscribe_int)(uint8_t *bit_no)
 {
-  /* To be implemented by the students */
-  printf("%s is not yet implemented!\n", __func__);
+  if (bit_no == NULL)
+  {
+    printf("Invalid pointer!\n");
+    return -1;
+  }
 
-  return 1;
+  *bit_no = hook_id;
+
+  if (sys_irqsetpolicy(TIMER0_IRQ, IRQ_REENABLE, &hook_id))
+  {
+    printf("Error setting policy!\n");
+    return -1;
+  }
+
+  return 0;
 }
 
 int(timer_unsubscribe_int)()
 {
-  /* To be implemented by the students */
-  printf("%s is not yet implemented!\n", __func__);
+  //Disable Timer Interrupts
+  if (sys_irqdisable(&hook_id))
+  {
+    printf("Error disabling interrupts!\n");
+    return -1;
+  }
+  
+  // Unsubscribe Timer Interrupts
+  if (sys_irqrmpolicy(&hook_id))
+  {
+    printf("Error removing policy!\n");
+    return -1;
+  }
 
-  return 1;
+  return 0;
 }
 
 void(timer_int_handler)()
 {
-  /* To be implemented by the students */
-  printf("%s is not yet implemented!\n", __func__);
+  counter++;
 }
 
 int(timer_get_conf)(uint8_t timer, uint8_t *st)
