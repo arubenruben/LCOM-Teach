@@ -40,11 +40,14 @@ int(timer_get_conf)(uint8_t timer, uint8_t *st)
   // Construct Read-Back Command
   uint32_t read_back_cmd = TIMER_RB_CMD | TIMER_RB_COUNT_ | TIMER_RB_SEL(timer);
 
-  if (!sys_outb(TIMER_CTRL, read_back_cmd))
+  if (sys_outb(TIMER_CTRL, read_back_cmd))
+  {
+    printf("Error writing to timer control register!\n");
     return -1;
+  }
 
   // Read Timer Register
-  if (!util_sys_inb(TIMER_0 + timer, st))
+  if (util_sys_inb(TIMER_0 + timer, st))
     return -1;
 
   return 0;
@@ -61,16 +64,34 @@ int(timer_display_conf)(uint8_t timer, uint8_t st, enum timer_status_field field
     val.in_mode = (st & TIMER_LSB_MSB) >> 4;
 
   else if (field == tsf_mode)
-    val.count_mode = (st & TIMER_SQR_WAVE) >> 1;
+  {
+    uint8_t operating_mode_mask = BIT(3) | BIT(2) | BIT(1);
+
+    uint8_t value_right_shifted_normalized = (st & operating_mode_mask) >> 1;
+
+    if (value_right_shifted_normalized == 6)
+      value_right_shifted_normalized = 2;
+
+    if (value_right_shifted_normalized == 7)
+      value_right_shifted_normalized = 3;
+
+    val.count_mode = value_right_shifted_normalized;
+  }
 
   else if (field == tsf_base)
     val.bcd = st & TIMER_BCD;
 
   else
+  {
+    printf("Invalid timer status field!\n");
     return -1;
+  }
 
-  if(!timer_print_config(timer, field, val))
+  if (timer_print_config(timer, field, val))
+  {
+    printf("Error printing timer configuration!\n");
     return -1;
+  }
 
   return 0;
 }

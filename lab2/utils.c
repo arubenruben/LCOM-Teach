@@ -21,10 +21,13 @@ int(util_get_MSB)(uint16_t val, uint8_t *msb)
 int(util_sys_inb)(int port, uint8_t *value)
 {
   // Extract the first byte of a 32-bit integer
-  uint32_t byte = 0;
+  uint32_t byte = 0x00;
 
-  if (!sys_inb(port, &byte))
+  if (sys_inb(port, &byte) != 0)
+  {
+    printf("Error reading from port!\n");
     return -1;
+  }
 
   *value = (uint8_t)byte;
 
