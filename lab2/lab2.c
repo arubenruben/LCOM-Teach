@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 
 int(timer_test_read_config)(uint8_t timer, enum timer_status_field field)
 {
-  /* To be implemented by the students */
+    
   uint8_t st = 0x00;
 
   if (timer_get_conf(timer, &st))
@@ -92,9 +92,9 @@ int(timer_test_int)(uint8_t time)
       switch (_ENDPOINT_P(msg.m_source))
       {
       case HARDWARE: /* hardware interrupt notification */
-        if (msg.m_notify.interrupts & irq_set)
-        {
-
+        
+        if (msg.m_notify.interrupts & BIT(hook_id))
+        {   
           timer_int_handler();
 
               if ((counter % sys_hz()) == 0)

@@ -192,3 +192,5 @@ fabric.properties
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,clion,c
 .vscode/
+
+lab3/.gdbinit
