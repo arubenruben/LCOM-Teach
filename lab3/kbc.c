@@ -47,6 +47,10 @@ void(kbc_ih)(void)
 
         scan_code.error = false;
     }
+    else
+    {
+        scan_code.error = true;
+    }
 }
 
 int(kbc_read_command)(uint8_t *command)
@@ -59,17 +63,35 @@ int(kbc_read_command)(uint8_t *command)
         return 1;
     }
 
+    if (status & IBF)
+    {
+        printf("IBF is set\n");
+        return -1;
+    }
+
+    if (sys_outb(STAT_REG, READ_COMMAND_BYTE) != 0)
+    {
+        printf("Error writing command\n");
+        return 1;
+    }
+
+    if (util_sys_inb(STAT_REG, &status) != 0)
+    {
+        printf("Error reading status register\n");
+        return 1;
+    }
+
     if (status & OBF)
     {
-        if (util_sys_inb(OUT_BUF, command) != 0)
-        {
-            printf("Error reading output buffer\n");
-            return 1;
-        }
-
         if ((status & ERROR_KBC) != 0)
         {
             printf("Error reading scancode\n");
+            return 1;
+        }
+
+        if (util_sys_inb(OUT_BUF, command) != 0)
+        {
+            printf("Error reading output buffer\n");
             return 1;
         }
     }
@@ -87,13 +109,34 @@ int(kbc_write_command)(uint8_t command)
         return 1;
     }
 
-    if ((status & IBF) == 0)
+    if (status & IBF)
     {
-        if (sys_outb(STAT_REG, command) != 0)
-        {
-            printf("Error writing command\n");
-            return 1;
-        }
+        printf("IBF is set\n");
+        return -1;
+    }
+
+    if (sys_outb(STAT_REG, WRITE_COMMAND_BYTE) != 0)
+    {
+        printf("Error writing command\n");
+        return 1;
+    }
+    
+    if (util_sys_inb(STAT_REG, &status) != 0)
+    {
+        printf("Error reading status register\n");
+        return 1;
+    }
+
+    if (status & IBF)
+    {
+        printf("IBF is set\n");
+        return -1;
+    }
+
+    if (sys_outb(OUT_BUF, command) != 0)
+    {
+        printf("Error writing command\n");
+        return 1;
     }
 
     return 0;

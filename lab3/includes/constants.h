@@ -9,6 +9,10 @@
 
 #define OUT_BUF 0x60
 
+#define WRITE_COMMAND_BYTE 0x60
+
+#define READ_COMMAND_BYTE 0x20
+
 #define ERROR_KBC (BIT(7)|BIT(6))
 
 #define MOUSE BIT(5)

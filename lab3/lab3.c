@@ -35,7 +35,6 @@ int main(int argc, char *argv[])
 
 void(kbc_reading_task)(bool *is_make_code, uint8_t *num_valid_scan_codes, uint8_t *scan_codes)
 {
-  /*
   if (scan_code.error)
   {
     printf("Error reading scancode\n");
@@ -72,18 +71,14 @@ void(kbc_reading_task)(bool *is_make_code, uint8_t *num_valid_scan_codes, uint8_
     return;
 
   kbd_print_scancode(*is_make_code, *num_valid_scan_codes, scan_codes);
-  */
 }
 
 int(kbd_test_scan)()
 {
   // subscribes kbc interrupts
   uint8_t bit_no = 1;
-  /*
-  bool is_make_code = true;
-  uint8_t num_valid_scan_codes = 1;
+
   uint8_t scan_codes[2];
-  */
 
   int ipc_status, r;
   message msg;
@@ -109,8 +104,13 @@ int(kbd_test_scan)()
       case HARDWARE: /* hardware interrupt notification */
         if (msg.m_notify.interrupts & BIT(bit_no))
         {
-          printf("KBC interrupt\n");
-          //kbc_reading_task(&is_make_code, &num_valid_scan_codes, scan_codes);
+
+          bool is_make_code = true;
+          uint8_t num_valid_scan_codes = 1;
+
+          kbc_ih();
+
+          kbc_reading_task(&is_make_code, &num_valid_scan_codes, scan_codes);
         }
         break;
       default:
@@ -137,13 +137,17 @@ int(kbd_test_poll)()
 {
   uint8_t command_byte;
 
-  bool is_make_code = true;
-  uint8_t num_valid_scan_codes = 1;
   uint8_t scan_codes[2];
 
   while (scan_code.scan_code != ESC_BREAK_CODE)
   {
-    kbc_reading_task(&is_make_code, &num_valid_scan_codes, scan_codes);
+    bool is_make_code = true;
+    uint8_t num_valid_scan_codes = 1;
+
+    kbc_ih();
+
+    if (!scan_code.error)
+      kbc_reading_task(&is_make_code, &num_valid_scan_codes, scan_codes);
   }
 
   // read command byte
@@ -157,11 +161,12 @@ int(kbd_test_poll)()
   command_byte |= BIT(0);
 
   // Enable mouse interrupts
-  command_byte |= BIT(1);
+  //command_byte |= BIT(1);
 
   // Mask to Enable keyboard interrupts
-  uint8_t dis_dis2_mask = ~(BIT(5) | BIT(4));
-
+  //uint8_t dis_dis2_mask = ~(BIT(5) | BIT(4));
+  uint8_t dis_dis2_mask = ~(BIT(4));
+  
   command_byte &= dis_dis2_mask;
 
   // Enable keyboard interrupts
