@@ -14,4 +14,8 @@ int(kbc_subscribe_int)(uint8_t *bit_no);
 
 void (kbc_ih)(void);
 
+int(kbc_read_command)(uint8_t *command);
+
+int(kbc_write_command)(uint8_t command);
+
 int(kbc_unsubscribe_int)(void);
