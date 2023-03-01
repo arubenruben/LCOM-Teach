@@ -5,6 +5,9 @@
 #include <stdint.h>
 
 #include "includes/kbc.h"
+#include "timer.h"
+
+#include <sys/time.h>
 
 extern scan_code_t scan_code;
 
@@ -161,12 +164,11 @@ int(kbd_test_poll)()
   command_byte |= BIT(0);
 
   // Enable mouse interrupts
-  //command_byte |= BIT(1);
+  command_byte |= BIT(1);
 
   // Mask to Enable keyboard interrupts
-  //uint8_t dis_dis2_mask = ~(BIT(5) | BIT(4));
-  uint8_t dis_dis2_mask = ~(BIT(4));
-  
+  uint8_t dis_dis2_mask = ~(BIT(5) | BIT(4));
+
   command_byte &= dis_dis2_mask;
 
   // Enable keyboard interrupts
@@ -181,8 +183,105 @@ int(kbd_test_poll)()
 
 int(kbd_test_timed_scan)(uint8_t n)
 {
-  /* To be completed by the students */
-  printf("%s is not yet implemented!\n", __func__);
 
-  return 1;
+  struct timeval tv,tv2;
+  
+  
+  // subscribes kbc interrupts
+  uint8_t timer_bit_no = 0;
+  uint8_t kb_bit_no = 1;
+  uint8_t scan_codes[2];
+
+  uint64_t seconds_counter = 0;
+
+  int ipc_status, r;
+  message msg;
+
+  if (timer_subscribe_int(&timer_bit_no) != 0)
+  {
+    printf("Error subscribing timer interrupts\n");
+    return 1;
+  }
+
+  if (kbc_subscribe_int(&kb_bit_no) != 0)
+  {
+    printf("Error subscribing KBC interrupts\n");
+    return 1;
+  }
+  
+  gettimeofday(&tv, NULL);
+
+  while (scan_code.scan_code != ESC_BREAK_CODE)
+  {
+    gettimeofday(&tv2, NULL);
+
+    long long milliseconds1 = (long long)tv.tv_sec * 1000LL + tv.tv_usec / 1000;
+  
+    long long milliseconds2 = (long long)tv2.tv_sec * 1000LL + tv2.tv_usec / 1000;
+    
+    if(milliseconds2 - milliseconds1 >= n*1000)
+      break;
+
+    /* Get a request message. */
+    if ((r = driver_receive(ANY, &msg, &ipc_status)) != 0)
+    {
+      printf("driver_receive failed with: %d", r);
+      continue;
+    }
+    if (is_ipc_notify(ipc_status))
+    { /* received notification */
+      switch (_ENDPOINT_P(msg.m_source))
+      {
+      case HARDWARE: /* hardware interrupt notification */
+
+        if (msg.m_notify.interrupts & BIT(timer_bit_no))
+        {
+          timer_int_handler();          
+        }
+        if (msg.m_notify.interrupts & BIT(kb_bit_no))
+        {
+          bool is_make_code = true;
+
+          uint8_t num_valid_scan_codes = 1;
+
+          kbc_ih();
+          
+          gettimeofday(&tv, NULL);
+
+          kbc_reading_task(&is_make_code, &num_valid_scan_codes, scan_codes);
+
+          seconds_counter = 0;
+        }
+
+        break;
+      default:
+        break; /* no other notifications expected: do nothing */
+      }
+    }
+    else
+    { /* received a standard message, not a notification */
+      /* no standard messages expected: do nothing */
+    }
+  }
+  gettimeofday(&tv2, NULL);
+  // unsubscribes kbc interrupts
+  if (kbc_unsubscribe_int() != 0)
+  {
+    printf("Error unsubscribing KBC interrupts\n");
+    return 1;
+  }
+
+  if (timer_unsubscribe_int() != 0)
+  {
+    printf("Error unsubscribing timer interrupts\n");
+    return 1;
+  }
+
+  long long milliseconds1 = (long long)tv.tv_sec * 1000LL + tv.tv_usec / 1000;
+  
+  long long milliseconds2 = (long long)tv2.tv_sec * 1000LL + tv2.tv_usec / 1000;
+  
+  printf("Current time in milliseconds: %lld\n", milliseconds2-milliseconds1);
+  
+  return 0;
 }
