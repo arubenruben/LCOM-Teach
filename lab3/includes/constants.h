@@ -23,6 +23,12 @@
 
 #define OBF BIT(0)
 
+#define TIMEOUT BIT(6)
+
 #define ESC_BREAK_CODE 0x81
 
 #define COMMAND_BYTE_KEYBOARD_INTERRUPT_MASK 0xFE;
+
+#define MAX_TRIES 5
+
+#define DELAY_US 20000

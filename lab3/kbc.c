@@ -75,27 +75,32 @@ int(kbc_read_command)(uint8_t *command)
         return 1;
     }
 
-    if (util_sys_inb(STAT_REG, &status) != 0)
+    for (u_int8_t i = 0; i < MAX_TRIES; i++)
     {
-        printf("Error reading status register\n");
+        if (util_sys_inb(STAT_REG, &status) != 0)
+        {
+            printf("Error reading status register\n");
+            return 1;
+        }
+
+        // If OBF is set and TIMEOUT is not set, then we can read the output buffer
+        if ((status & OBF) != 0 && (status & TIMEOUT) == 0)
+            break;
+
+        tickdelay(micros_to_ticks(DELAY_US));
+    }
+
+    if ((status & ERROR_KBC) != 0)
+    {
+        printf("Error reading scancode\n");
         return 1;
     }
 
-    if (status & OBF)
+    if (util_sys_inb(OUT_BUF, command) != 0)
     {
-        if ((status & ERROR_KBC) != 0)
-        {
-            printf("Error reading scancode\n");
-            return 1;
-        }
-
-        if (util_sys_inb(OUT_BUF, command) != 0)
-        {
-            printf("Error reading output buffer\n");
-            return 1;
-        }
+        printf("Error reading output buffer\n");
+        return 1;
     }
-
     return 0;
 }
 
@@ -120,11 +125,17 @@ int(kbc_write_command)(uint8_t command)
         printf("Error writing command\n");
         return 1;
     }
-    
-    if (util_sys_inb(STAT_REG, &status) != 0)
+
+    for (size_t i = 0; i < MAX_TRIES; i++)
     {
-        printf("Error reading status register\n");
-        return 1;
+        if (util_sys_inb(STAT_REG, &status) != 0)
+        {
+            printf("Error reading status register\n");
+            return 1;
+        }
+
+        if ((status & IBF) == 0 || (status & TIMEOUT) == 0)
+            break;
     }
 
     if (status & IBF)
