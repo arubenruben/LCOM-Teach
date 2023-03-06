@@ -36,52 +36,10 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-void(kbc_reading_task)(bool *is_make_code, uint8_t *num_valid_scan_codes, uint8_t *scan_codes)
-{
-  if (scan_code.error)
-  {
-    printf("Error reading scancode\n");
-    return;
-  }
-
-  if (scan_code.scan_code >= BIT(7))
-    *is_make_code = false;
-
-  if (scan_code.scan_code == 0xE0)
-  {
-    scan_code.expecting_second_byte = true;
-    *num_valid_scan_codes = 2;
-  }
-  else
-  {
-    scan_code.expecting_second_byte = false;
-  }
-
-  if (scan_codes[0] == 0xE0)
-  {
-    scan_codes[1] = scan_code.scan_code;
-    *num_valid_scan_codes = 2;
-  }
-  else
-  {
-    scan_codes[0] = scan_code.scan_code;
-  }
-
-  // If the first byte is 0xE0 and the second byte is -1, then the scancode is incomplete
-  // and we should wait for the next interrupt to get the second byte
-  // Cannot Print scancode
-  if (scan_codes[0] == 0xE0 && scan_code.expecting_second_byte == true)
-    return;
-
-  kbd_print_scancode(*is_make_code, *num_valid_scan_codes, scan_codes);
-}
-
 int(kbd_test_scan)()
 {
   // subscribes kbc interrupts
   uint8_t bit_no = 1;
-
-  uint8_t scan_codes[2];
 
   int ipc_status, r;
   message msg;
@@ -107,13 +65,9 @@ int(kbd_test_scan)()
       case HARDWARE: /* hardware interrupt notification */
         if (msg.m_notify.interrupts & BIT(bit_no))
         {
-
-          bool is_make_code = true;
-          uint8_t num_valid_scan_codes = 1;
-
           kbc_ih();
-
-          kbc_reading_task(&is_make_code, &num_valid_scan_codes, scan_codes);
+          if (!scan_code.error)
+            kbc_reading_task();
         }
         break;
       default:
@@ -140,17 +94,13 @@ int(kbd_test_poll)()
 {
   uint8_t command_byte;
 
-  uint8_t scan_codes[2];
-
   while (scan_code.scan_code != ESC_BREAK_CODE)
   {
-    bool is_make_code = true;
-    uint8_t num_valid_scan_codes = 1;
 
     kbc_ih();
 
     if (!scan_code.error)
-      kbc_reading_task(&is_make_code, &num_valid_scan_codes, scan_codes);
+      kbc_reading_task();
   }
 
   // read command byte
@@ -184,13 +134,11 @@ int(kbd_test_poll)()
 int(kbd_test_timed_scan)(uint8_t n)
 {
 
-  struct timeval tv,tv2;
-  
-  
+  struct timeval tv, tv2;
+
   // subscribes kbc interrupts
   uint8_t timer_bit_no = 0;
-  uint8_t kb_bit_no = 1;
-  uint8_t scan_codes[2];
+  uint8_t kb_bit_no = 1;  
 
   uint64_t seconds_counter = 0;
 
@@ -208,7 +156,7 @@ int(kbd_test_timed_scan)(uint8_t n)
     printf("Error subscribing KBC interrupts\n");
     return 1;
   }
-  
+
   gettimeofday(&tv, NULL);
 
   while (scan_code.scan_code != ESC_BREAK_CODE)
@@ -216,10 +164,10 @@ int(kbd_test_timed_scan)(uint8_t n)
     gettimeofday(&tv2, NULL);
 
     long long milliseconds1 = (long long)tv.tv_sec * 1000LL + tv.tv_usec / 1000;
-  
+
     long long milliseconds2 = (long long)tv2.tv_sec * 1000LL + tv2.tv_usec / 1000;
-    
-    if(milliseconds2 - milliseconds1 >= n*1000)
+
+    if (milliseconds2 - milliseconds1 >= n * 1000)
       break;
 
     /* Get a request message. */
@@ -236,19 +184,16 @@ int(kbd_test_timed_scan)(uint8_t n)
 
         if (msg.m_notify.interrupts & BIT(timer_bit_no))
         {
-          timer_int_handler();          
+          timer_int_handler();
         }
         if (msg.m_notify.interrupts & BIT(kb_bit_no))
         {
-          bool is_make_code = true;
-
-          uint8_t num_valid_scan_codes = 1;
 
           kbc_ih();
-          
+
           gettimeofday(&tv, NULL);
 
-          kbc_reading_task(&is_make_code, &num_valid_scan_codes, scan_codes);
+          kbc_reading_task();
 
           seconds_counter = 0;
         }
@@ -278,10 +223,10 @@ int(kbd_test_timed_scan)(uint8_t n)
   }
 
   long long milliseconds1 = (long long)tv.tv_sec * 1000LL + tv.tv_usec / 1000;
-  
+
   long long milliseconds2 = (long long)tv2.tv_sec * 1000LL + tv2.tv_usec / 1000;
-  
-  printf("Current time in milliseconds: %lld\n", milliseconds2-milliseconds1);
-  
+
+  printf("Current time in milliseconds: %lld\n", milliseconds2 - milliseconds1);
+
   return 0;
 }

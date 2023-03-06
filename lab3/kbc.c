@@ -53,6 +53,52 @@ void(kbc_ih)(void)
     }
 }
 
+void(kbc_reading_task)()
+{
+    // To Preserve the Value Between Interrupts
+    static uint8_t scan_codes[2] = {0, 0};
+
+    bool is_make_code = true;
+    uint8_t num_valid_scan_codes = 1;
+
+    if (scan_code.error)
+    {
+        printf("Error reading scancode\n");
+        return;
+    }
+
+    if (scan_code.scan_code >= BIT(7))
+        is_make_code = false;
+
+    if (scan_code.scan_code == 0xE0)
+    {
+        scan_code.expecting_second_byte = true;
+        num_valid_scan_codes = 2;
+    }
+    else
+    {
+        scan_code.expecting_second_byte = false;
+    }
+
+    if (scan_codes[0] == 0xE0)
+    {
+        scan_codes[1] = scan_code.scan_code;
+        num_valid_scan_codes = 2;
+    }
+    else
+    {
+        scan_codes[0] = scan_code.scan_code;
+    }
+
+    // If the first byte is 0xE0 and the second byte is -1, then the scancode is incomplete
+    // and we should wait for the next interrupt to get the second byte
+    // Cannot Print scancode
+    if (scan_codes[0] == 0xE0 && scan_code.expecting_second_byte == true)
+        return;
+
+    kbd_print_scancode(is_make_code, num_valid_scan_codes, scan_codes);
+}
+
 int(kbc_read_command)(uint8_t *command)
 {
     uint8_t status;
