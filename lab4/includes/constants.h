@@ -25,3 +25,5 @@
 #define TIMEOUT BIT(6)
 
 #define AUX BIT(5)
+
+#define TWO_COMPLEMENT 0xFF00

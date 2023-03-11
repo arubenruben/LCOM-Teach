@@ -5,7 +5,7 @@
 
 static int hook_id_mouse = 12;
 
-static mouse_reading_t mouse_packet;
+mouse_reading_t mouse_packet;
 
 /*
 struct packet {
@@ -30,10 +30,34 @@ int(mouse_subscribe_int)(uint8_t *bit_no)
     return 0;
 }
 
+int(mouse_disable_interrupts)(void)
+{
+
+    if ((sys_irqdisable(&hook_id_mouse)) != 0)
+    {
+        printf("Error in sys_irqdisable()\n");
+        return 1;
+    }
+
+    return 0;
+}
+
+int(mouse_enable_interrupts)(void)
+{
+
+    if ((sys_irqenable(&hook_id_mouse)) != 0)
+    {
+        printf("Error in sys_irqenable()\n");
+        return 1;
+    }
+
+    return 0;
+}
+
 int(personal_mouse_enable_data_reporting)(void)
 {
     mouse_enable_data_reporting();
-    
+
     return 0;
 }
 
@@ -52,11 +76,11 @@ int(mouse_read_out_buf)(uint8_t *data, bool sleep)
         util_sys_inb(STAT_REG, &stat); /* assuming it returns OK */
 
         /* loop while 8042 output buffer is empty */
-        if ((stat & OBF) && (stat & AUX))
+        if (stat & OBF)
         {
             util_sys_inb(OUT_BUF, data); /* ass. it returns OK */
 
-            if ((stat & ERROR_KBC) != 0)
+            if ((stat & ERROR_KBC) && (stat & AUX) != 0)
                 mouse_packet.error = true;
             else
                 return 0;
@@ -90,6 +114,13 @@ int(mouse_reading_task)(void)
 
     lcf_mouse_packet.bytes[byte_counter] = mouse_packet.packet;
 
+    if (byte_counter == 0 && (lcf_mouse_packet.bytes[byte_counter] & BIT(3)) == 0)
+    {
+        printf("Error in mouse packet!\n");
+        byte_counter = 0;
+        return -1;
+    }
+
     byte_counter++;
 
     if (byte_counter == 3)
@@ -104,9 +135,15 @@ int(mouse_reading_task)(void)
 
         lcf_mouse_packet.y_ov = lcf_mouse_packet.bytes[0] & BIT(7);
 
-        lcf_mouse_packet.delta_x = lcf_mouse_packet.bytes[1];
+        if (lcf_mouse_packet.bytes[0] & BIT(4))
+            lcf_mouse_packet.delta_x = lcf_mouse_packet.bytes[1] | TWO_COMPLEMENT;
+        else
+            lcf_mouse_packet.delta_x = lcf_mouse_packet.bytes[1];
 
-        lcf_mouse_packet.delta_y = lcf_mouse_packet.bytes[2];
+        if (lcf_mouse_packet.bytes[0] & BIT(5))
+            lcf_mouse_packet.delta_y = lcf_mouse_packet.bytes[2] | TWO_COMPLEMENT;
+        else
+            lcf_mouse_packet.delta_y = lcf_mouse_packet.bytes[2];
 
         mouse_print_packet(&lcf_mouse_packet);
 

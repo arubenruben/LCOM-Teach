@@ -47,9 +47,21 @@ int(mouse_test_packet)(uint32_t cnt)
     return 1;
   }
 
+  if (mouse_disable_interrupts() != 0)
+  {
+    printf("Error in mouse_disable_interrupts()\n");
+    return 1;
+  }
+
   if (personal_mouse_enable_data_reporting() != 0)
   {
     printf("Error in personal_mouse_enable_data_reporting()\n");
+    return 1;
+  }
+
+  if (mouse_enable_interrupts() != 0)
+  {
+    printf("Error in mouse_enable_interrupts()\n");
     return 1;
   }
 
@@ -69,7 +81,7 @@ int(mouse_test_packet)(uint32_t cnt)
         if (msg.m_notify.interrupts & BIT(bit_no))
         {
           mouse_ih();
-          if (mouse_reading_task() == 0)
+          if (mouse_packet.error == false && mouse_reading_task() == 0)
           {
             cnt--;
           }
@@ -85,9 +97,21 @@ int(mouse_test_packet)(uint32_t cnt)
     }
   }
 
+  if ((mouse_disable_interrupts()) != 0)
+  {
+    printf("Error in mouse_disable_interrupts()\n");
+    return 1;
+  }
+
   if (mouse_disable_data_reporting() != 0)
   {
     printf("Error in mouse_disable_data_reporting()\n");
+    return 1;
+  }
+
+  if (mouse_enable_interrupts() != 0)
+  {
+    printf("Error in mouse_enable_interrupts()\n");
     return 1;
   }
 
