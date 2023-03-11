@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 
 int(timer_test_read_config)(uint8_t timer, enum timer_status_field field)
 {
-    
+
   uint8_t st = 0x00;
 
   if (timer_get_conf(timer, &st))
@@ -64,20 +64,16 @@ int(timer_test_time_base)(uint8_t timer, uint32_t freq)
 
 int(timer_test_int)(uint8_t time)
 {
-  uint8_t hook_id;
-  uint8_t irq_set;
+  uint8_t bit_no = 0;
 
-  int r;
-  int ipc_status;
+  int ipc_status, r;
   message msg;
 
-  if (timer_subscribe_int(&hook_id) != 0)
+  if (timer_subscribe_int(&bit_no) != 0)
   {
     printf("Error subscribing timer interrupts!\n");
     return -1;
   }
-
-  irq_set = BIT(hook_id);
 
   while (time)
   { /* You may want to use a different condition */
@@ -92,12 +88,12 @@ int(timer_test_int)(uint8_t time)
       switch (_ENDPOINT_P(msg.m_source))
       {
       case HARDWARE: /* hardware interrupt notification */
-        
-        if (msg.m_notify.interrupts & BIT(hook_id))
-        {   
+
+        if (msg.m_notify.interrupts & BIT(bit_no))
+        {
           timer_int_handler();
 
-              if ((counter % sys_hz()) == 0)
+          if ((counter % sys_hz()) == 0)
           {
             time--;
 
