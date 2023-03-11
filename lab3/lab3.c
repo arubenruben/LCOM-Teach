@@ -8,7 +8,6 @@
 #include "includes/timer.h"
 #include "includes/keyboard.h"
 
-
 extern scan_code_t scan_code;
 
 int main(int argc, char *argv[])
@@ -92,39 +91,17 @@ int(kbd_test_scan)()
 
 int(kbd_test_poll)()
 {
-  uint8_t command_byte;
-
+  
   while (scan_code.scan_code != ESC_BREAK_CODE)
   {
-
     kbc_ih();
-
     if (!scan_code.error)
       kbc_reading_task();
   }
 
-  // read command byte
-  if (kbc_read_command(&command_byte) != 0)
+  if (kbc_enable_interrupts() != 0)
   {
-    printf("Error reading command byte\n");
-    return 1;
-  }
-
-  // Enable keyboard interrupts
-  command_byte |= BIT(0);
-
-  // Enable mouse interrupts
-  command_byte |= BIT(1);
-
-  // Mask to Enable keyboard interrupts
-  uint8_t dis_dis2_mask = ~(BIT(5) | BIT(4));
-
-  command_byte &= dis_dis2_mask;
-
-  // Enable keyboard interrupts
-  if (kbc_write_command(command_byte) != 0)
-  {
-    printf("Error writing command byte\n");
+    printf("Error enabling interrupts\n");
     return 1;
   }
 
@@ -138,7 +115,7 @@ int(kbd_test_timed_scan)(uint8_t n)
 
   // subscribes kbc interrupts
   uint8_t timer_bit_no = 0;
-  uint8_t kb_bit_no = 1;  
+  uint8_t kb_bit_no = 1;
 
   uint64_t seconds_counter = 0;
 
@@ -188,7 +165,6 @@ int(kbd_test_timed_scan)(uint8_t n)
         }
         if (msg.m_notify.interrupts & BIT(kb_bit_no))
         {
-
           kbc_ih();
 
           gettimeofday(&tv, NULL);

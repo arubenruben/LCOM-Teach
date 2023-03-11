@@ -14,10 +14,14 @@ int(kbc_subscribe_int)(uint8_t *bit_no);
 
 void(kbc_ih)(void);
 
-int(kbc_read_command)(uint8_t *command);
+int(kbc_read_command_byte)(uint8_t *command);
 
-int(kbc_write_command)(uint8_t command);
+int(kbc_write_command_byte)(uint8_t command);
 
 int(kbc_unsubscribe_int)(void);
 
 void(kbc_reading_task)();
+
+int(kbc_enable_interrupts)(void);
+
+int(kbc_disable_interrupts)(void);

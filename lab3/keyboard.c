@@ -20,8 +20,15 @@ int(kbc_subscribe_int)(uint8_t *bit_no)
     return 0;
 }
 
-void(kbc_ih)(void)
+int(kbc_read_out_buf)(uint8_t *data, bool sleep)
 {
+
+    if (data == NULL)
+    {
+        printf("Invalid pointer!\n");
+        return 1;
+    }
+
     for (size_t i = 0; i < MAX_TRIES; i++)
     {
         uint8_t stat;
@@ -33,46 +40,45 @@ void(kbc_ih)(void)
         /* loop while 8042 output buffer is empty */
         if (stat & OBF)
         {
-            util_sys_inb(OUT_BUF, &scan_code.scan_code); /* ass. it returns OK */
+            util_sys_inb(OUT_BUF, data); /* ass. it returns OK */
 
             if ((stat & ERROR_KBC) != 0)
                 scan_code.error = true;
             else
-                return;
+                return 0;
+        }
+
+        if (sleep)
+            tickdelay(micros_to_ticks(DELAY_US));
+    }
+
+    return -1;
+}
+
+int(kbc_write_command)(uint8_t address, uint8_t command)
+{
+
+    for (size_t i = 0; i < MAX_TRIES; i++)
+    {
+        uint8_t stat;
+
+        util_sys_inb(STAT_REG, &stat); /* assuming it returns OK */
+
+        /* loop while 8042 input buffer is not empty */
+        if ((stat & IBF) == 0)
+        {
+            sys_outb(address, command); /* assuming it returns OK */
+            return 0;
         }
         tickdelay(micros_to_ticks(DELAY_US));
     }
-    /*
-    uint8_t status;
 
-    if (util_sys_inb(STAT_REG, &status) != 0)
-    {
-        printf("Error reading status register\n");
-        return;
-    }
+    return 1;
+}
 
-    if (status & OBF)
-    {
-        if (util_sys_inb(OUT_BUF, &scan_code.scan_code) != 0)
-        {
-            printf("Error reading output buffer\n");
-            scan_code.error = true;
-            return;
-        }
-
-        if ((status & ERROR_KBC) != 0)
-        {
-            printf("Error reading scancode\n");
-            return;
-        }
-
-        scan_code.error = false;
-    }
-    else
-    {
-        scan_code.error = true;
-    }
-    */
+void(kbc_ih)(void)
+{
+    kbc_read_out_buf(&scan_code.scan_code, false);
 }
 
 void(kbc_reading_task)()
@@ -121,100 +127,87 @@ void(kbc_reading_task)()
     kbd_print_scancode(is_make_code, num_valid_scan_codes, scan_codes);
 }
 
-int(kbc_read_command)(uint8_t *command)
+int(kbc_read_command_byte)(uint8_t *command)
 {
-    uint8_t status;
+    kbc_write_command(STAT_REG, READ_COMMAND_BYTE);
 
-    if (util_sys_inb(STAT_REG, &status) != 0)
-    {
-        printf("Error reading status register\n");
-        return 1;
-    }
+    kbc_read_out_buf(command, true);
 
-    if (status & IBF)
-    {
-        printf("IBF is set\n");
-        return -1;
-    }
-
-    if (sys_outb(STAT_REG, READ_COMMAND_BYTE) != 0)
-    {
-        printf("Error writing command\n");
-        return 1;
-    }
-
-    for (u_int8_t i = 0; i < MAX_TRIES; i++)
-    {
-        if (util_sys_inb(STAT_REG, &status) != 0)
-        {
-            printf("Error reading status register\n");
-            return 1;
-        }
-
-        // If OBF is set and TIMEOUT is not set, then we can read the output buffer
-        if ((status & OBF) != 0 && (status & TIMEOUT) == 0)
-            break;
-
-        tickdelay(micros_to_ticks(DELAY_US));
-    }
-
-    if ((status & ERROR_KBC) != 0)
-    {
-        printf("Error reading scancode\n");
-        return 1;
-    }
-
-    if (util_sys_inb(OUT_BUF, command) != 0)
-    {
-        printf("Error reading output buffer\n");
-        return 1;
-    }
     return 0;
 }
 
-int(kbc_write_command)(uint8_t command)
+int(kbc_write_command_byte)(uint8_t command)
 {
-    uint8_t status;
-
-    if (util_sys_inb(STAT_REG, &status) != 0)
+    if (kbc_write_command(STAT_REG, WRITE_COMMAND_BYTE) != 0)
     {
-        printf("Error reading status register\n");
+        printf("Error writing command byte\n");
         return 1;
     }
 
-    if (status & IBF)
+    if (kbc_write_command(OUT_BUF, command) != 0)
     {
-        printf("IBF is set\n");
-        return -1;
-    }
-
-    if (sys_outb(STAT_REG, WRITE_COMMAND_BYTE) != 0)
-    {
-        printf("Error writing command\n");
+        printf("Error writing command byte\n");
         return 1;
     }
 
-    for (size_t i = 0; i < MAX_TRIES; i++)
-    {
-        if (util_sys_inb(STAT_REG, &status) != 0)
-        {
-            printf("Error reading status register\n");
-            return 1;
-        }
+    return 0;
+}
 
-        if ((status & IBF) == 0 || (status & TIMEOUT) == 0)
-            break;
+int(kbc_enable_interrupts)(void)
+{
+    uint8_t command_byte;
+
+    if (kbc_read_command_byte(&command_byte) != 0)
+    {
+        printf("Error reading command byte\n");
+        return 1;
     }
 
-    if (status & IBF)
+    // Enable keyboard interrupts
+    command_byte |= BIT(0);
+
+    // Enable mouse interrupts
+    command_byte |= BIT(1);
+
+    // Mask to Enable keyboard interrupts
+    uint8_t dis_dis2_mask = ~(BIT(5) | BIT(4));
+
+    command_byte &= dis_dis2_mask;
+
+    if (kbc_write_command_byte(command_byte) != 0)
     {
-        printf("IBF is set\n");
-        return -1;
+        printf("Error writing command byte\n");
+        return 1;
     }
 
-    if (sys_outb(OUT_BUF, command) != 0)
+    return 0;
+}
+
+int(kbc_disable_interrupts)(void)
+{
+
+    uint8_t command_byte;
+
+    if (kbc_read_command_byte(&command_byte) != 0)
     {
-        printf("Error writing command\n");
+        printf("Error reading command byte\n");
+        return 1;
+    }
+
+    // Disable keyboard interrupts
+    command_byte &= ~BIT(0);
+
+    // Disable mouse interrupts
+    command_byte &= ~BIT(1);
+
+    // Mask to Disable keyboard interrupts
+    uint8_t dis_dis2_mask = ~(BIT(5) | BIT(4));
+
+    command_byte &= dis_dis2_mask;
+
+    if (kbc_write_command_byte(command_byte) != 0)
+    {
+        printf("Error writing command byte\n");
         return 1;
     }
 
