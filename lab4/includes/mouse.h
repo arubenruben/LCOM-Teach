@@ -3,6 +3,7 @@
 #include "lcom/lcf.h"
 
 #include "includes/constants.h"
+#include "includes/keyboard.h"
 
 typedef struct mouse_reading_t
 {
@@ -31,5 +32,3 @@ int(mouse_read_out_buf)(uint8_t *data, bool sleep);
 void(mouse_ih)(void);
 
 int(mouse_reading_task)(void);
-
-int(mouse_set_stream_mode)(void);

@@ -5,6 +5,8 @@
 #include <stdio.h>
 
 #include "includes/mouse.h"
+#include "includes/keyboard.h"
+#include "includes/constants.h"
 
 // Any header files included below this line should have been created by you
 

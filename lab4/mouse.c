@@ -1,21 +1,8 @@
-
-#include "lcom/lcf.h"
-
 #include "includes/mouse.h"
 
 static int hook_id_mouse = 12;
 
 mouse_reading_t mouse_packet;
-
-/*
-struct packet {
-    uint8_t bytes[3]; // mouse packet raw bytes
-    bool rb, mb, lb;  // right, middle and left mouse buttons pressed
-    int16_t delta_x;  // mouse x-displacement: rightwards is positive
-    int16_t delta_y;  // mouse y-displacement: upwards is positive
-    bool x_ov, y_ov;  // mouse x-displacement and y-displacement overflows
-};
-*/
 
 int(mouse_subscribe_int)(uint8_t *bit_no)
 {
@@ -56,7 +43,29 @@ int(mouse_enable_interrupts)(void)
 
 int(personal_mouse_enable_data_reporting)(void)
 {
-    mouse_enable_data_reporting();
+    uint8_t data;
+    uint8_t status;
+    
+    //Read Status Register    
+    if (util_sys_inb(STAT_REG, &status) != 0)
+    {
+        printf("Error in kbc_read_command()\n");
+        return 1;
+    }
+
+    kbc_write_command(STAT_REG, DISABLE_MOUSE);
+
+    kbc_write_command(STAT_REG, WRITE_BYTE_MOUSE);
+    
+    kbc_write_command(ARG_REG, ENABLE_DATA_REPORTING);
+
+    mouse_read_out_buf(&data, true);
+
+    if(data != ACK)
+    {
+        printf("Error in personal_mouse_enable_data_reporting()\n");
+        return 1;
+    }
 
     return 0;
 }
