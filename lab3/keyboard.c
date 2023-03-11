@@ -55,6 +55,16 @@ int(kbc_read_out_buf)(uint8_t *data, bool sleep)
     return -1;
 }
 
+int(kbc_read_dummy_byte)(void)
+{
+    uint8_t dummy_byte;
+
+    if (kbc_read_out_buf(&dummy_byte, false) != 0)
+        printf("Error reading Dummy byte\n");
+
+    return 0;
+}
+
 int(kbc_write_command)(uint8_t address, uint8_t command)
 {
 
@@ -68,6 +78,7 @@ int(kbc_write_command)(uint8_t address, uint8_t command)
         if ((stat & IBF) == 0)
         {
             sys_outb(address, command); /* assuming it returns OK */
+
             return 0;
         }
         tickdelay(micros_to_ticks(DELAY_US));

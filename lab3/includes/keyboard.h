@@ -25,3 +25,5 @@ void(kbc_reading_task)();
 int(kbc_enable_interrupts)(void);
 
 int(kbc_disable_interrupts)(void);
+
+int(kbc_read_dummy_byte)(void);

@@ -91,7 +91,7 @@ int(kbd_test_scan)()
 
 int(kbd_test_poll)()
 {
-  
+
   while (scan_code.scan_code != ESC_BREAK_CODE)
   {
     kbc_ih();
