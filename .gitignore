@@ -196,3 +196,7 @@ fabric.properties
 lab3/.gdbinit
 
 *.log
+
+lab4/.gdbinit
+
+*.txt
