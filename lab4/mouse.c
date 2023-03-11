@@ -43,10 +43,15 @@ int(mouse_enable_interrupts)(void)
 
 int(personal_mouse_enable_data_reporting)(void)
 {
+    return write_command_to_mouse(ENABLE_DATA_REPORTING);
+}
+
+int(write_command_to_mouse)(uint8_t command)
+{
     uint8_t data;
     uint8_t status;
-    
-    //Read Status Register    
+
+    // Read Status Register
     if (util_sys_inb(STAT_REG, &status) != 0)
     {
         printf("Error in kbc_read_command()\n");
@@ -56,14 +61,14 @@ int(personal_mouse_enable_data_reporting)(void)
     kbc_write_command(STAT_REG, DISABLE_MOUSE);
 
     kbc_write_command(STAT_REG, WRITE_BYTE_MOUSE);
-    
-    kbc_write_command(ARG_REG, ENABLE_DATA_REPORTING);
+
+    kbc_write_command(ARG_REG, command);
 
     mouse_read_out_buf(&data, true);
 
-    if(data != ACK)
+    if (data != ACK)
     {
-        printf("Error in personal_mouse_enable_data_reporting()\n");
+        printf("Error in write_command_to_mouse()\n");
         return 1;
     }
 
@@ -164,7 +169,7 @@ int(mouse_reading_task)(void)
 
 int(mouse_disable_data_reporting)(void)
 {
-    return 0;
+    return write_command_to_mouse(DISABLE_DATA_REPORTING);
 }
 
 int(mouse_unsubscribe_int)(void)

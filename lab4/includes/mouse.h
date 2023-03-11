@@ -32,3 +32,5 @@ int(mouse_read_out_buf)(uint8_t *data, bool sleep);
 void(mouse_ih)(void);
 
 int(mouse_reading_task)(void);
+
+int(write_command_to_mouse)(uint8_t command);

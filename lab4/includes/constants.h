@@ -34,6 +34,8 @@
 
 #define ENABLE_DATA_REPORTING 0xF4
 
+#define DISABLE_DATA_REPORTING 0xF5
+
 #define ARG_REG 0x60
 
 #define ACK 0xFA
