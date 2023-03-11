@@ -3,8 +3,7 @@
 
 #include <stdint.h>
 
-#include "includes/i8254.h"
-#include "timer.h"
+#include "includes/timer.h"
 
 uint64_t counter = 0;
 

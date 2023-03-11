@@ -74,7 +74,7 @@ int(timer_subscribe_int)(uint8_t *bit_no)
     return -1;
   }
 
-  hook_id= *bit_no;
+  hook_id = *bit_no;
 
   if (sys_irqsetpolicy(TIMER0_IRQ, IRQ_REENABLE, &hook_id))
   {
@@ -87,13 +87,13 @@ int(timer_subscribe_int)(uint8_t *bit_no)
 
 int(timer_unsubscribe_int)()
 {
-  //Disable Timer Interrupts
+  // Disable Timer Interrupts
   if (sys_irqdisable(&hook_id))
   {
     printf("Error disabling interrupts!\n");
     return -1;
   }
-  
+
   // Unsubscribe Timer Interrupts
   if (sys_irqrmpolicy(&hook_id))
   {

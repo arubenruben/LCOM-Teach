@@ -1,6 +1,6 @@
 #include <lcom/lcf.h>
 
-#include "includes/kbc.h"
+#include "includes/keyboard.h"
 
 static int hook_id;
 
@@ -22,6 +22,27 @@ int(kbc_subscribe_int)(uint8_t *bit_no)
 
 void(kbc_ih)(void)
 {
+    for (size_t i = 0; i < MAX_TRIES; i++)
+    {
+        uint8_t stat;
+
+        scan_code.error = false;
+
+        util_sys_inb(STAT_REG, &stat); /* assuming it returns OK */
+
+        /* loop while 8042 output buffer is empty */
+        if (stat & OBF)
+        {
+            util_sys_inb(OUT_BUF, &scan_code.scan_code); /* ass. it returns OK */
+
+            if ((stat & ERROR_KBC) != 0)
+                scan_code.error = true;
+            else
+                return;
+        }
+        tickdelay(micros_to_ticks(DELAY_US));
+    }
+    /*
     uint8_t status;
 
     if (util_sys_inb(STAT_REG, &status) != 0)
@@ -51,6 +72,7 @@ void(kbc_ih)(void)
     {
         scan_code.error = true;
     }
+    */
 }
 
 void(kbc_reading_task)()

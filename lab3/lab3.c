@@ -3,11 +3,11 @@
 #include <lcom/lab3.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#include "includes/kbc.h"
-#include "timer.h"
-
 #include <sys/time.h>
+
+#include "includes/timer.h"
+#include "includes/keyboard.h"
+
 
 extern scan_code_t scan_code;
 
