@@ -60,9 +60,7 @@ int(write_command_to_mouse)(uint8_t command)
         printf("Error in kbc_read_command()\n");
         return 1;
     }
-
-    kbc_write_command(STAT_REG, DISABLE_MOUSE);
-
+    
     kbc_write_command(STAT_REG, WRITE_BYTE_MOUSE);
 
     kbc_write_command(ARG_REG, command);

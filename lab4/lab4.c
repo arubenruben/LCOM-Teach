@@ -297,6 +297,8 @@ int(mouse_test_gesture)(uint8_t x_len, uint8_t tolerance)
 
             struct mouse_ev event = mouse_process_event(&mouse_packet.elem, moving_up, tolerance);
 
+            printf("Event: %d\n", event.type);
+
             current_state = mouse_process_state(&event, &mouse_packet.elem, tolerance);
 
             if(current_state==VERTEX){
@@ -307,6 +309,8 @@ int(mouse_test_gesture)(uint8_t x_len, uint8_t tolerance)
             {
               current_state = mouse_confirm_end_state(x_len);
             }
+
+            printf("Current state: %d\n", current_state);
           }
         }
         break;

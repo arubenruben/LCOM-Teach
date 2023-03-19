@@ -87,7 +87,7 @@ struct mouse_ev(mouse_process_event)(struct packet *mouse_packet, bool moving_up
 mouse_state_t(mouse_process_state)(struct mouse_ev *mouse_event, struct packet *mouse_packet, uint8_t tolerance)
 {
     // To Avoid Modify State. Start in neutral state. The MOUSE_MOV state.
-    static mouse_state_t current_state;
+    static mouse_state_t current_state = START;
 
     if (mouse_event == NULL)
     {
@@ -103,15 +103,11 @@ mouse_state_t(mouse_process_state)(struct mouse_ev *mouse_event, struct packet *
 
     switch (mouse_event->type)
     {
-    case LB_PRESSED:
+    case LB_PRESSED:                
         if (current_state == START)
         {
             current_state = DRAW_UP;
-        }
-        else
-        {
-            current_state = START;
-        }
+        }        
         break;
 
     case LB_RELEASED:
@@ -152,7 +148,7 @@ mouse_state_t(mouse_process_state)(struct mouse_ev *mouse_event, struct packet *
         if (current_state == DRAW_UP)
         {
             // Check if the mouse is moving Diagonally UP Right
-            if ((((mouse_packet->delta_x + tolerance >= 0) & TWO_COMPLEMENT) == 0) && ((mouse_packet->delta_y + tolerance) & TWO_COMPLEMENT) == 0)
+            if ((mouse_packet->delta_x + tolerance >= 0) && (mouse_packet->delta_y + tolerance >= 0))
             {
                 current_state = DRAW_UP;
                 displacement_x += mouse_packet->delta_x;
@@ -166,7 +162,7 @@ mouse_state_t(mouse_process_state)(struct mouse_ev *mouse_event, struct packet *
         else if (current_state == DRAW_DOWN)
         {
             // Check if the mouse is moving Diagonally DOWN Left
-            if ((((mouse_packet->delta_x + tolerance >= 0) & TWO_COMPLEMENT) == 0) && ((mouse_packet->delta_y - tolerance) & TWO_COMPLEMENT) != 0)
+            if ((mouse_packet->delta_x + tolerance >= 0) && ((mouse_packet->delta_y - tolerance <= 0)))
             {
                 current_state = DRAW_DOWN;
                 displacement_x += mouse_packet->delta_x;
@@ -176,13 +172,17 @@ mouse_state_t(mouse_process_state)(struct mouse_ev *mouse_event, struct packet *
             {
                 current_state = START;
             }
-        }
+        }else if(current_state==VERTEX){
+            printf("current_state==VERTEX\n");
+        }      
         else
         {
             current_state = START;
         }
         break;
     default:
+        current_state = START;
+        printf("mouse_event->type is not valid");
         break;
     }
 
@@ -202,15 +202,17 @@ mouse_state_t(mouse_confirm_end_state)(uint8_t x_len)
 
 mouse_state_t(mouse_confirm_slope)(void)
 {
-
+    if(displacement_x==0){
+        return VERTEX;
+    }
     if (displacement_y / displacement_x < 1)
     {
         return START;
     }
 
-    displacement_x=0;
-    
-    displacement_y=0;
+    displacement_x = 0;
+
+    displacement_y = 0;
 
     return VERTEX;
 }
