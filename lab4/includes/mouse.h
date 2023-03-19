@@ -7,9 +7,9 @@
 
 typedef struct mouse_reading_t
 {
-    uint8_t packet;
+    struct packet elem;    
     bool error;
-    uint8_t byte_index;
+    size_t byte_index;
 
 } mouse_reading_t;
 
