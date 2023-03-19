@@ -110,14 +110,10 @@ int(kbd_test_poll)()
 
 int(kbd_test_timed_scan)(uint8_t n)
 {
-
-  struct timeval tv, tv2;
-
   // subscribes kbc interrupts
   uint8_t timer_bit_no = 0;
   uint8_t kb_bit_no = 1;
-
-  uint64_t seconds_counter = 0;
+  uint8_t seconds_counter = 0;
 
   int ipc_status, r;
   message msg;
@@ -134,19 +130,8 @@ int(kbd_test_timed_scan)(uint8_t n)
     return 1;
   }
 
-  gettimeofday(&tv, NULL);
-
-  while (scan_code.scan_code != ESC_BREAK_CODE)
+  while (scan_code.scan_code != ESC_BREAK_CODE && seconds_counter < n)
   {
-    gettimeofday(&tv2, NULL);
-
-    long long milliseconds1 = (long long)tv.tv_sec * 1000LL + tv.tv_usec / 1000;
-
-    long long milliseconds2 = (long long)tv2.tv_sec * 1000LL + tv2.tv_usec / 1000;
-
-    if (milliseconds2 - milliseconds1 >= n * 1000)
-      break;
-
     /* Get a request message. */
     if ((r = driver_receive(ANY, &msg, &ipc_status)) != 0)
     {
@@ -162,15 +147,18 @@ int(kbd_test_timed_scan)(uint8_t n)
         if (msg.m_notify.interrupts & BIT(timer_bit_no))
         {
           timer_int_handler();
+
+          if (counter % sys_hz() == 0)
+            seconds_counter++;
         }
         if (msg.m_notify.interrupts & BIT(kb_bit_no))
         {
           kbc_ih();
 
-          gettimeofday(&tv, NULL);
+          if (!scan_code.error)
+            kbc_reading_task();
 
-          kbc_reading_task();
-
+          counter = 0;
           seconds_counter = 0;
         }
 
@@ -184,7 +172,7 @@ int(kbd_test_timed_scan)(uint8_t n)
       /* no standard messages expected: do nothing */
     }
   }
-  gettimeofday(&tv2, NULL);
+
   // unsubscribes kbc interrupts
   if (kbc_unsubscribe_int() != 0)
   {
@@ -197,12 +185,6 @@ int(kbd_test_timed_scan)(uint8_t n)
     printf("Error unsubscribing timer interrupts\n");
     return 1;
   }
-
-  long long milliseconds1 = (long long)tv.tv_sec * 1000LL + tv.tv_usec / 1000;
-
-  long long milliseconds2 = (long long)tv2.tv_sec * 1000LL + tv2.tv_usec / 1000;
-
-  printf("Current time in milliseconds: %lld\n", milliseconds2 - milliseconds1);
 
   return 0;
 }
