@@ -2,7 +2,7 @@
 
 #include "includes/mouse_dfa.h"
 #include "includes/constants.h"
-
+long first_displacement_x = 0;
 long displacement_x = 0;
 long displacement_y = 0;
 /*
@@ -175,9 +175,19 @@ mouse_state_t(mouse_process_state)(struct mouse_ev event, uint8_t x_len, uint8_t
     case VERTEX:
         if (event.type == RB_PRESSED)
         {
-            displacement_x = 0;
-            displacement_y = 0;
-            current_state = DRAW_DOWN;
+            first_displacement_x = displacement_x;
+
+            if ((displacement_y / displacement_x) < 1)
+            {
+                current_state = START;
+            }
+            else
+            {
+                first_displacement_x = displacement_x;
+                current_state = DRAW_DOWN;
+                displacement_x = 0;
+                displacement_y = 0;
+            }
         }
         else if (event.type == MOUSE_MOV)
         {
@@ -213,14 +223,17 @@ mouse_state_t(mouse_process_state)(struct mouse_ev event, uint8_t x_len, uint8_t
         break;
     }
 
-    // Verify Vertex Conditions
-    if (current_state == VERTEX)
-    {
-    }
-
     // Verify End Conditions
     if (current_state == END)
     {
+        if ((displacement_y / displacement_x) < 1)
+        {
+            current_state = START;
+        }
+        if ((displacement_x + first_displacement_x) < x_len)
+        {
+            current_state = START;
+        }
     }
 
     return current_state;
