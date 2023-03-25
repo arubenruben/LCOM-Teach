@@ -75,6 +75,71 @@ struct mouse_ev(mouse_process_event)(struct packet mouse_packet)
     return event_to_return;
 }
 
+bool valid_down_movement(int16_t delta_x, int16_t delta_y, uint8_t tolerance)
+{
+    if (delta_x >= 0 && delta_y <= 0)
+    {
+        // If the horizontal displacement is positive and the vertical displacement is negative,
+        // increment both horizontal and vertical displacements by their absolute values.
+        displacement_x += abs(delta_x);
+        displacement_y += abs(delta_y);
+    }
+    else if (delta_x < 0 && abs(delta_x) < tolerance && delta_y <= 0)
+    {
+        // If the horizontal displacement is negative and its absolute value is less than the tolerance,
+        // and the vertical displacement is negative, increment both displacements by their absolute values.
+        displacement_x += abs(delta_x);
+        displacement_y += abs(delta_y);
+    }
+    else if (delta_x >= 0 && delta_y > 0 && abs(delta_y) < tolerance)
+    {
+        // If the horizontal displacement is positive, the vertical displacement is positive, and the
+        // absolute value of the vertical displacement is less than the tolerance, increment both
+        // displacements by their absolute values.
+        displacement_x += abs(delta_x);
+        displacement_y += abs(delta_y);
+    }
+    else
+    {
+        // If none of the above conditions are true, set the current state to START.
+        return false;
+    }
+
+    return true;
+}
+
+bool valid_up_movement(int16_t delta_x, int16_t delta_y, uint8_t tolerance)
+{
+    if (delta_x >= 0 && delta_y >= 0)
+    {
+        // If the horizontal displacement is positive and the vertical displacement is negative,
+        // increment both horizontal and vertical displacements by their absolute values.
+        displacement_x = abs(delta_x);
+        displacement_y = abs(delta_y);
+    }
+    else if (delta_x < 0 && abs(delta_x) < tolerance && delta_y > 0)
+    {
+        // If the horizontal displacement is negative and its absolute value is less than the tolerance,
+        // and the vertical displacement is negative, increment both displacements by their absolute values.
+        displacement_x = abs(delta_x);
+        displacement_y = abs(delta_y);
+    }
+    else if (delta_x > 0 && delta_y < 0 && abs(delta_y) < tolerance)
+    {
+        // If the horizontal displacement is positive, the vertical displacement is positive, and the
+        // absolute value of the vertical displacement is less than the tolerance, increment both
+        // displacements by their absolute values.
+        displacement_x = abs(delta_x);
+        displacement_y = abs(delta_y);
+    }
+    else
+    {
+        // If none of the above conditions are true, set the current state to START.
+        return false;
+    }
+    return true;
+}
+
 mouse_state_t(mouse_process_state)(struct mouse_ev event, uint8_t x_len, uint8_t tolerance)
 {
     static mouse_state_t current_state = START;
@@ -84,55 +149,16 @@ mouse_state_t(mouse_process_state)(struct mouse_ev event, uint8_t x_len, uint8_t
     case START:
         if (event.type == LB_PRESSED)
         {
-            if (displacement_x > 0 && displacement_y > 0)
+            if (valid_up_movement(event.delta_x, event.delta_y, tolerance))
             {
-                displacement_x = event.delta_x;
-                displacement_y = event.delta_y;
-
                 current_state = DRAW_UP;
-            }
-            else if ((displacement_x < 0 && abs(displacement_x) < tolerance) && displacement_y >= 0)
-            {
-                displacement_x = event.delta_x;
-                displacement_y = event.delta_y;
-
-                current_state = DRAW_UP;
-            }
-            else if((displacement_x >0 && displacement_y <0 && abs(displacement_y)<tolerance)){
-                displacement_x = event.delta_x;
-                displacement_y = event.delta_y;
-
-                current_state = DRAW_UP;
-            }
-            else if ((displacement_x < 0 && abs(displacement_x) < tolerance) && (displacement_y < 0 && abs(displacement_y) < tolerance))
-            {
-                displacement_x = event.delta_x;
-                displacement_y = event.delta_y;
-
-                current_state = DRAW_UP;
-            }
-            else
-            {
-                displacement_x = 0;
-                displacement_y = 0;
             }
         }
         break;
     case DRAW_UP:
         if (event.type == LB_PRESSED)
         {
-            // Verify Dispacement Signal and Tolerance
-            if (displacement_x > 0 && displacement_y > 0)
-            {
-                displacement_x += event.delta_x;
-                displacement_y += event.delta_y;
-            }
-            else if ((displacement_x < 0 && abs(displacement_x) < tolerance) && (displacement_y < 0 && abs(displacement_y) < tolerance))
-            {
-                displacement_x += event.delta_x;
-                displacement_y += event.delta_y;
-            }
-            else
+            if (!valid_up_movement(event.delta_x, event.delta_y, tolerance))
             {
                 current_state = START;
             }
@@ -169,9 +195,10 @@ mouse_state_t(mouse_process_state)(struct mouse_ev event, uint8_t x_len, uint8_t
     case DRAW_DOWN:
         if (event.type == RB_PRESSED)
         {
-            // Verify Dispacement Signal and Tolerance
-            displacement_x += abs(event.delta_x);
-            displacement_y += abs(event.delta_y);
+            if (!valid_down_movement(event.delta_x, event.delta_y, tolerance))
+            {
+                current_state = START;
+            }
         }
         else if (event.type == RB_RELEASED)
         {
@@ -181,6 +208,8 @@ mouse_state_t(mouse_process_state)(struct mouse_ev event, uint8_t x_len, uint8_t
         {
             current_state = START;
         }
+        break;
+    case END:
         break;
     }
 

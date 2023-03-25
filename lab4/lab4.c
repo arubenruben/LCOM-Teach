@@ -290,7 +290,7 @@ int(mouse_test_gesture)(uint8_t x_len, uint8_t tolerance)
           mouse_ih();
           if (mouse_reading_task() == 0)
           {
-            current_state = mouse_process_state(mouse_process_event(), x_len, tolerance);
+            current_state = mouse_process_state(mouse_process_event(mouse_packet.elem), x_len, tolerance);
           }
         }
         break;
