@@ -91,18 +91,31 @@ mouse_state_t(mouse_process_state)(struct mouse_ev event, uint8_t x_len, uint8_t
 
                 current_state = DRAW_UP;
             }
+            else if ((displacement_x < 0 && abs(displacement_x) < tolerance) && displacement_y >= 0)
+            {
+                displacement_x = event.delta_x;
+                displacement_y = event.delta_y;
+
+                current_state = DRAW_UP;
+            }
+            else if((displacement_x >0 && displacement_y <0 && abs(displacement_y)<tolerance)){
+                displacement_x = event.delta_x;
+                displacement_y = event.delta_y;
+
+                current_state = DRAW_UP;
+            }
             else if ((displacement_x < 0 && abs(displacement_x) < tolerance) && (displacement_y < 0 && abs(displacement_y) < tolerance))
             {
                 displacement_x = event.delta_x;
                 displacement_y = event.delta_y;
-                
+
                 current_state = DRAW_UP;
             }
             else
             {
                 displacement_x = 0;
                 displacement_y = 0;
-            }            
+            }
         }
         break;
     case DRAW_UP:
