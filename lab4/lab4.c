@@ -290,27 +290,7 @@ int(mouse_test_gesture)(uint8_t x_len, uint8_t tolerance)
           mouse_ih();
           if (mouse_reading_task() == 0)
           {
-            bool moving_up = false;
-
-            if (current_state == DRAW_UP)
-              moving_up = true;
-
-            struct mouse_ev event = mouse_process_event(&mouse_packet.elem, moving_up, tolerance);
-
-            printf("Event: %d\n", event.type);
-
-            current_state = mouse_process_state(&event, &mouse_packet.elem, tolerance);
-
-            if(current_state==VERTEX){
-              mouse_confirm_slope();
-            }
-
-            if (current_state == END)
-            {
-              current_state = mouse_confirm_end_state(x_len);
-            }
-
-            printf("Current state: %d\n", current_state);
+            current_state = mouse_process_state(mouse_process_event(), x_len, tolerance);
           }
         }
         break;

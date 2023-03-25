@@ -37,81 +37,94 @@ struct mouse_ev {
 };
 */
 
-struct mouse_ev(mouse_process_event)(struct packet *mouse_packet, bool moving_up, uint8_t tolerance)
+struct mouse_ev(mouse_process_event)(struct packet mouse_packet)
 {
-    // To Avoid Modify State. Start in neutral state. The BUTTON_EV state.
-    static struct mouse_ev current_event = {BUTTON_EV, 0, 0};
+    static struct mouse_ev event_to_return = {MOUSE_MOV, 0, 0};
 
-    // BUTTON_EV is the neutral state. Avoid to Modify Teacher Code.
-    if (mouse_packet == NULL)
-    {
-        printf("mouse_packet is NULL");
-        current_event.type = BUTTON_EV;
-        current_event.delta_x = 0;
-        current_event.delta_y = 0;
-        return current_event;
-    }
+    event_to_return.delta_x = mouse_packet.delta_x;
+    event_to_return.delta_y = mouse_packet.delta_y;
 
-    if (mouse_packet->mb == true)
+    if (mouse_packet.lb == true && mouse_packet.rb == false && mouse_packet.mb == false)
     {
-        current_event.type = BUTTON_EV;
+        event_to_return.type = LB_PRESSED;
     }
-    else if (mouse_packet->lb == true && mouse_packet->rb == false)
+    else if (mouse_packet.lb == false && mouse_packet.rb == true && mouse_packet.mb == false)
     {
-        current_event.type = LB_PRESSED;
+        event_to_return.type = RB_PRESSED;
     }
-    else if (mouse_packet->lb == false && mouse_packet->rb == true)
+    else if (mouse_packet.lb == false && mouse_packet.rb == false && mouse_packet.mb == true)
     {
-        current_event.type = RB_PRESSED;
+        event_to_return.type = BUTTON_EV;
     }
-    else if (mouse_packet->lb == false && mouse_packet->rb == false && current_event.type == MOUSE_MOV && moving_up == true)
+    else
     {
-        current_event.type = LB_RELEASED;
-    }
-    else if (mouse_packet->lb == false && mouse_packet->rb == false && current_event.type == MOUSE_MOV && moving_up == false)
-    {
-        current_event.type = RB_RELEASED;
-    }
-
-    if (mouse_packet->delta_x || mouse_packet->delta_y)
-    {
-        current_event.type = MOUSE_MOV;
+        switch (event_to_return.type)
+        {
+        case LB_PRESSED:
+            event_to_return.type = LB_RELEASED;
+            break;
+        case RB_PRESSED:
+            event_to_return.type = RB_RELEASED;
+            break;
+        default:
+            event_to_return.type = MOUSE_MOV;
+            break;
+        }
     }
 
-    current_event.delta_x = mouse_packet->delta_x;
-    current_event.delta_y = mouse_packet->delta_y;
-
-    return current_event;
+    return event_to_return;
 }
 
-mouse_state_t(mouse_process_state)(struct mouse_ev *mouse_event, struct packet *mouse_packet, uint8_t tolerance)
+mouse_state_t(mouse_process_state)(struct mouse_ev event, uint8_t x_len, uint8_t tolerance)
 {
-    // To Avoid Modify State. Start in neutral state. The MOUSE_MOV state.
     static mouse_state_t current_state = START;
 
-    if (mouse_event == NULL)
+    switch (current_state)
     {
-        printf("mouse_event is NULL");
-        return START;
-    }
-
-    if (mouse_packet == NULL)
-    {
-        printf("mouse_packet is NULL");
-        return START;
-    }
-
-    switch (mouse_event->type)
-    {
-    case LB_PRESSED:                
-        if (current_state == START)
+    case START:
+        if (event.type == LB_PRESSED)
         {
-            current_state = DRAW_UP;
-        }        
-        break;
+            if (displacement_x > 0 && displacement_y > 0)
+            {
+                displacement_x = event.delta_x;
+                displacement_y = event.delta_y;
 
-    case LB_RELEASED:
-        if (current_state == DRAW_UP)
+                current_state = DRAW_UP;
+            }
+            else if ((displacement_x < 0 && abs(displacement_x) < tolerance) && (displacement_y < 0 && abs(displacement_y) < tolerance))
+            {
+                displacement_x = event.delta_x;
+                displacement_y = event.delta_y;
+                
+                current_state = DRAW_UP;
+            }
+            else
+            {
+                displacement_x = 0;
+                displacement_y = 0;
+            }            
+        }
+        break;
+    case DRAW_UP:
+        if (event.type == LB_PRESSED)
+        {
+            // Verify Dispacement Signal and Tolerance
+            if (displacement_x > 0 && displacement_y > 0)
+            {
+                displacement_x += event.delta_x;
+                displacement_y += event.delta_y;
+            }
+            else if ((displacement_x < 0 && abs(displacement_x) < tolerance) && (displacement_y < 0 && abs(displacement_y) < tolerance))
+            {
+                displacement_x += event.delta_x;
+                displacement_y += event.delta_y;
+            }
+            else
+            {
+                current_state = START;
+            }
+        }
+        else if (event.type == LB_RELEASED)
         {
             current_state = VERTEX;
         }
@@ -120,19 +133,34 @@ mouse_state_t(mouse_process_state)(struct mouse_ev *mouse_event, struct packet *
             current_state = START;
         }
         break;
-
-    case RB_PRESSED:
-        if (current_state == VERTEX)
+    case VERTEX:
+        if (event.type == RB_PRESSED)
         {
+            displacement_x = 0;
+            displacement_y = 0;
             current_state = DRAW_DOWN;
+        }
+        else if (event.type == MOUSE_MOV)
+        {
+            if (abs(event.delta_x) > tolerance || abs(event.delta_y) > tolerance)
+            {
+                current_state = START;
+            }
         }
         else
         {
             current_state = START;
         }
         break;
-    case RB_RELEASED:
-        if (current_state == DRAW_DOWN)
+
+    case DRAW_DOWN:
+        if (event.type == RB_PRESSED)
+        {
+            // Verify Dispacement Signal and Tolerance
+            displacement_x += abs(event.delta_x);
+            displacement_y += abs(event.delta_y);
+        }
+        else if (event.type == RB_RELEASED)
         {
             current_state = END;
         }
@@ -141,78 +169,17 @@ mouse_state_t(mouse_process_state)(struct mouse_ev *mouse_event, struct packet *
             current_state = START;
         }
         break;
-    case BUTTON_EV:
-        current_state = START;
-        break;
-    case MOUSE_MOV:
-        if (current_state == DRAW_UP)
-        {
-            // Check if the mouse is moving Diagonally UP Right
-            if ((mouse_packet->delta_x + tolerance >= 0) && (mouse_packet->delta_y + tolerance >= 0))
-            {
-                current_state = DRAW_UP;
-                displacement_x += mouse_packet->delta_x;
-                displacement_y += mouse_packet->delta_y;
-            }
-            else
-            {
-                current_state = START;
-            }
-        }
-        else if (current_state == DRAW_DOWN)
-        {
-            // Check if the mouse is moving Diagonally DOWN Left
-            if ((mouse_packet->delta_x + tolerance >= 0) && ((mouse_packet->delta_y - tolerance <= 0)))
-            {
-                current_state = DRAW_DOWN;
-                displacement_x += mouse_packet->delta_x;
-                displacement_y += mouse_packet->delta_y;
-            }
-            else
-            {
-                current_state = START;
-            }
-        }else if(current_state==VERTEX){
-            printf("current_state==VERTEX\n");
-        }      
-        else
-        {
-            current_state = START;
-        }
-        break;
-    default:
-        current_state = START;
-        printf("mouse_event->type is not valid");
-        break;
+    }
+
+    // Verify Vertex Conditions
+    if (current_state == VERTEX)
+    {
+    }
+
+    // Verify End Conditions
+    if (current_state == END)
+    {
     }
 
     return current_state;
-}
-
-mouse_state_t(mouse_confirm_end_state)(uint8_t x_len)
-{
-
-    if (displacement_x < x_len)
-    {
-        return START;
-    }
-
-    return END;
-}
-
-mouse_state_t(mouse_confirm_slope)(void)
-{
-    if(displacement_x==0){
-        return VERTEX;
-    }
-    if (displacement_y / displacement_x < 1)
-    {
-        return START;
-    }
-
-    displacement_x = 0;
-
-    displacement_y = 0;
-
-    return VERTEX;
 }
