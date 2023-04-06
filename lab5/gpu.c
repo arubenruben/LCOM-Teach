@@ -8,6 +8,13 @@ static uint16_t h_res;
 static uint16_t v_res;
 static uint8_t bits_per_pixel;
 
+static uint8_t RedMaskSize;        /* size of direct color red mask in bits */
+static uint8_t RedFieldPosition;   /* bit position of lsb of red mask */
+static uint8_t GreenMaskSize;      /* size of direct color green mask in bits */
+static uint8_t GreenFieldPosition; /* bit position of lsb of green mask */
+static uint8_t BlueMaskSize;       /* size of direct color blue mask in bits */
+static uint8_t BlueFieldPosition;  /* bit position of lsb of blue mask */
+
 int vbe_set_mode(uint16_t mode)
 {
     reg86_t reg86;
@@ -68,6 +75,12 @@ void *(vg_init)(uint16_t mode)
     h_res = vbe_mode_info.XResolution;
     v_res = vbe_mode_info.YResolution;
     bits_per_pixel = vbe_mode_info.BitsPerPixel;
+    RedFieldPosition = vbe_mode_info.RedFieldPosition;
+    RedMaskSize = vbe_mode_info.RedMaskSize;
+    GreenFieldPosition = vbe_mode_info.GreenFieldPosition;
+    GreenMaskSize = vbe_mode_info.GreenMaskSize;
+    BlueFieldPosition = vbe_mode_info.BlueFieldPosition;
+    BlueMaskSize = vbe_mode_info.BlueMaskSize;
 
     // Map the memory
     if (vg_map(vbe_mode_info) != 0)
@@ -107,9 +120,6 @@ int(vg_set_pixel)(uint16_t x, uint16_t y, uint32_t color)
     {
     case 8:
         *pixel = color;
-        break;
-    case 15:
-        *(uint16_t *)pixel = color;
         break;
     case 16:
         *(uint16_t *)pixel = color;
@@ -153,6 +163,105 @@ int(vg_draw_rectangle)(uint16_t x, uint16_t y, uint16_t width, uint16_t height, 
             return 1;
         }
     }
+
+    return 0;
+}
+
+uint16_t get_h_res()
+{
+    return h_res;
+}
+
+uint16_t get_v_res()
+{
+    return v_res;
+}
+
+uint8_t get_bits_per_pixel()
+{
+    return bits_per_pixel;
+}
+
+uint8_t get_RedMaskSize()
+{
+    return RedMaskSize;
+}
+
+uint8_t get_RedFieldPosition()
+{
+    return RedFieldPosition;
+}
+
+uint8_t get_GreenMaskSize()
+{
+    return GreenMaskSize;
+}
+
+uint8_t get_GreenFieldPosition()
+{
+    return GreenFieldPosition;
+}
+
+uint8_t get_BlueMaskSize()
+{
+    return BlueMaskSize;
+}
+
+uint8_t get_BlueFieldPosition()
+{
+    return BlueFieldPosition;
+}
+
+int(draw_xpm)(xpm_map_t xpm, uint16_t x, uint16_t y)
+{
+
+    xpm_image_t img;
+
+    uint8_t *pixmap = xpm_load(xpm, XPM_INDEXED, &img);
+
+    if (pixmap == NULL)
+    {
+        printf("Error loading xpm");
+        return 1;
+    }
+
+    for (int i = 0; i < img.height; i++)
+    {
+        for (int j = 0; j < img.width; j++)
+        {
+            if (*(pixmap + i * img.width + j) != 0)
+                vg_set_pixel(x + j, y + i, *(pixmap + i * img.width + j));
+        }
+    }
+
+    free(pixmap);
+
+    return 0;
+}
+
+int(erase_xpm)(xpm_map_t xpm, uint16_t x, uint16_t y)
+{
+
+    xpm_image_t img;
+
+    uint8_t *pixmap = xpm_load(xpm, XPM_INDEXED, &img);
+
+    if (pixmap == NULL)
+    {
+        printf("Error loading xpm");
+        return 1;
+    }
+
+    for (int i = 0; i < img.height; i++)
+    {
+        for (int j = 0; j < img.width; j++)
+        {
+            if (*(pixmap + i * img.width + j) != 0)
+                vg_set_pixel(x + j, y + i, *(pixmap + i * img.width + j));
+        }
+    }
+
+    free(pixmap);
 
     return 0;
 }

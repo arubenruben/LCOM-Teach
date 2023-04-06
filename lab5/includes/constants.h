@@ -37,3 +37,8 @@
 #define MAX_TRIES 5
 
 #define DELAY_US 20000
+
+#define MODE_0X110_15BIT_PROBLEM 0x7fff
+
+#define INDEXED_MODE 0x105
+

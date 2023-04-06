@@ -126,21 +126,185 @@ int(video_test_rectangle)(uint16_t mode, uint16_t x, uint16_t y,
     return 0;
 }
 
+uint32_t get_color(uint32_t row, uint32_t col, uint32_t first, uint8_t no_rectangles, uint8_t step)
+{
+    uint32_t color = 0;
+
+    uint32_t r, r1;
+    uint32_t g, g1;
+    uint32_t b, b1;
+
+    if (get_bits_per_pixel() == 8)
+        color = (first + (row * no_rectangles + col) * step) % (1 << get_bits_per_pixel());
+    else
+    {
+        r1 = first >> (get_BlueMaskSize() + get_GreenMaskSize()) & ((1 << get_RedMaskSize()) - 1);
+        g1 = first >> get_BlueMaskSize() & ((1 << get_GreenMaskSize()) - 1);
+        b1 = first & ((1 << get_BlueMaskSize()) - 1);
+
+        r = (r1 + col * step) % (1 << get_RedMaskSize());
+        g = (g1 + row * step) % (1 << get_GreenMaskSize());
+        b = (b1 + (col + row) * step) % (1 << get_BlueMaskSize());
+        r = r << get_RedFieldPosition();
+        g = g << get_GreenFieldPosition();
+        b = b << get_BlueFieldPosition();
+
+        color = r | g | b;
+    }
+
+    return color;
+}
+
 int(video_test_pattern)(uint16_t mode, uint8_t no_rectangles, uint32_t first, uint8_t step)
 {
-    /* To be completed */
-    printf("%s(0x%03x, %u, 0x%08x, %d): under construction\n", __func__,
-           mode, no_rectangles, first, step);
+    // subscribes kbc interrupts
+    uint8_t bit_no = 1;
 
-    return 1;
+    int ipc_status, r;
+    message msg;
+
+    if (kbc_subscribe_int(&bit_no) != 0)
+    {
+        printf("Error subscribing KBC interrupts\n");
+        return 1;
+    }
+
+    if (vg_init(mode) == NULL)
+    {
+        printf("Error in vg_init()");
+        return 1;
+    }
+
+    uint32_t color = 0;
+    uint16_t width = 0;
+    uint16_t height = 0;
+
+    if (no_rectangles != 0)
+    {
+        width = ((get_h_res()) / no_rectangles);
+        height = ((get_v_res()) / no_rectangles);
+    }
+
+    for (int row = 0; row < no_rectangles; row++)
+    {
+        for (int col = 0; col < no_rectangles; col++)
+        {
+            color = get_color(row, col, first, no_rectangles, step);
+
+            vg_draw_rectangle(col * width, row * height, width, height, color);
+        }
+    }
+
+    while (scan_code.scan_code != ESC_BREAK_CODE)
+    {
+        /* Get a request message. */
+        if ((r = driver_receive(ANY, &msg, &ipc_status)) != 0)
+        {
+            printf("driver_receive failed with: %d", r);
+            continue;
+        }
+        if (is_ipc_notify(ipc_status))
+        { /* received notification */
+            switch (_ENDPOINT_P(msg.m_source))
+            {
+            case HARDWARE: /* hardware interrupt notification */
+                if (msg.m_notify.interrupts & BIT(bit_no))
+                {
+                    kbc_ih();
+                    if (!scan_code.error)
+                        kbc_reading_task();
+                }
+                break;
+            default:
+                break; /* no other notifications expected: do nothing */
+            }
+        }
+        else
+        { /* received a standard message, not a notification */
+            /* no standard messages expected: do nothing */
+        }
+    }
+
+    if (vg_exit() != 0)
+    {
+        printf("Error in vg_exit()");
+        return 1;
+    }
+
+    if (kbc_unsubscribe_int() != 0)
+    {
+        printf("Error unsubscribing KBC interrupts\n");
+        return 1;
+    }
+
+    return 0;
 }
 
 int(video_test_xpm)(xpm_map_t xpm, uint16_t x, uint16_t y)
 {
-    /* To be completed */
-    printf("%s(%8p, %u, %u): under construction\n", __func__, xpm, x, y);
+       // subscribes kbc interrupts
+    uint8_t bit_no = 1;
 
-    return 1;
+    int ipc_status, r;
+    message msg;
+
+    if (kbc_subscribe_int(&bit_no) != 0)
+    {
+        printf("Error subscribing KBC interrupts\n");
+        return 1;
+    }
+
+    if (vg_init(INDEXED_MODE) == NULL)
+    {
+        printf("Error in vg_init()");
+        return 1;
+    }
+    
+    draw_xpm(xpm, x, y);
+ 
+    while (scan_code.scan_code != ESC_BREAK_CODE)
+    {
+        /* Get a request message. */
+        if ((r = driver_receive(ANY, &msg, &ipc_status)) != 0)
+        {
+            printf("driver_receive failed with: %d", r);
+            continue;
+        }
+        if (is_ipc_notify(ipc_status))
+        { /* received notification */
+            switch (_ENDPOINT_P(msg.m_source))
+            {
+            case HARDWARE: /* hardware interrupt notification */
+                if (msg.m_notify.interrupts & BIT(bit_no))
+                {
+                    kbc_ih();
+                    if (!scan_code.error)
+                        kbc_reading_task();
+                }
+                break;
+            default:
+                break; /* no other notifications expected: do nothing */
+            }
+        }
+        else
+        { /* received a standard message, not a notification */
+            /* no standard messages expected: do nothing */
+        }
+    }
+
+    if (vg_exit() != 0)
+    {
+        printf("Error in vg_exit()");
+        return 1;
+    }
+
+    if (kbc_unsubscribe_int() != 0)
+    {
+        printf("Error unsubscribing KBC interrupts\n");
+        return 1;
+    }
+
+    return 0;    
 }
 
 int(video_test_move)(xpm_map_t xpm, uint16_t xi, uint16_t yi, uint16_t xf, uint16_t yf,
