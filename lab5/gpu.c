@@ -257,7 +257,7 @@ int(erase_xpm)(xpm_map_t xpm, uint16_t x, uint16_t y)
         for (int j = 0; j < img.width; j++)
         {
             if (*(pixmap + i * img.width + j) != 0)
-                vg_set_pixel(x + j, y + i, *(pixmap + i * img.width + j));
+                vg_set_pixel(x + j, y + i, 0);
         }
     }
 
