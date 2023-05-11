@@ -40,5 +40,7 @@
 
 #define MODE_0X110_15BIT_PROBLEM 0x7fff
 
+#define MODE_0x14C_8bits_PROBLEM 0xFFFFFF
+
 #define INDEXED_MODE 0x105
 

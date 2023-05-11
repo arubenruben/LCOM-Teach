@@ -7,6 +7,7 @@ static uint8_t *video_mem;
 static uint16_t h_res;
 static uint16_t v_res;
 static uint8_t bits_per_pixel;
+static uint16_t graphical_mode;
 
 static uint8_t RedMaskSize;        /* size of direct color red mask in bits */
 static uint8_t RedFieldPosition;   /* bit position of lsb of red mask */
@@ -14,6 +15,11 @@ static uint8_t GreenMaskSize;      /* size of direct color green mask in bits */
 static uint8_t GreenFieldPosition; /* bit position of lsb of green mask */
 static uint8_t BlueMaskSize;       /* size of direct color blue mask in bits */
 static uint8_t BlueFieldPosition;  /* bit position of lsb of blue mask */
+
+int get_bytes_per_pixel()
+{
+    return (bits_per_pixel + 7) / 8;
+}
 
 int vbe_set_mode(uint16_t mode)
 {
@@ -81,6 +87,7 @@ void *(vg_init)(uint16_t mode)
     GreenMaskSize = vbe_mode_info.GreenMaskSize;
     BlueFieldPosition = vbe_mode_info.BlueFieldPosition;
     BlueMaskSize = vbe_mode_info.BlueMaskSize;
+    graphical_mode = mode;
 
     // Map the memory
     if (vg_map(vbe_mode_info) != 0)
@@ -113,26 +120,21 @@ int(vg_set_pixel)(uint16_t x, uint16_t y, uint32_t color)
         return 1;
     }
 
-    uint8_t *pixel = video_mem + (y * h_res + x) * (bits_per_pixel / 8);
+    uint8_t *pixel = video_mem + (y * h_res + x) * get_bytes_per_pixel();
 
-    //  Set the pixel
-    switch (bits_per_pixel)
+    if (graphical_mode == 0x110)
     {
-    case 8:
-        *pixel = color;
-        break;
-    case 16:
-        *(uint16_t *)pixel = color;
-        break;
-    case 24:
-        *(uint32_t *)pixel = color;
-        break;
-    case 32:
-        *(uint32_t *)pixel = color;
-        break;
-    default:
-        printf("Error: bits_per_pixel is not 8, 15, 16, 24 or 32");
-        return 1;
+        color &= MODE_0X110_15BIT_PROBLEM;
+    }
+    else if (graphical_mode == 0x14C)
+    {
+        color &= 0xFFFFFF;
+    }
+
+    for (int i = 0; i < get_bytes_per_pixel(); i++)
+    {
+        *(pixel + i) = color;
+        color >>= 8;
     }
 
     return 0;
