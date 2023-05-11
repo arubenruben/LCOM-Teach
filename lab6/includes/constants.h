@@ -39,3 +39,13 @@
 #define RTC_DM BIT(2)
 
 #define BCD_TO_BIN(x) ((x >> 4) * 10 + (x & 0x0F))
+
+#define RTC_IRQ_LINE 8
+
+#define RTC_AIE_BIT_MASK BIT(5)
+
+#define RTC_SECONDS_ALARM 0x01
+
+#define RTC_MINUTES_ALARM 0x03
+
+#define RTC_HOURS_ALARM 0x05

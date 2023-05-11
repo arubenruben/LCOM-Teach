@@ -25,7 +25,6 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-
 void print_byte(unsigned char byte)
 {
     int i;
@@ -69,23 +68,92 @@ int(rtc_test_date)()
     rtc_t return_value = read_time();
 
     printf("Date: %02x/%02x/%02x\n", return_value.day, return_value.month, return_value.year);
-    
+
     printf("Time: %02x:%02x:%02x\n", return_value.hours, return_value.minutes, return_value.seconds);
-    
+
     return 0;
 }
 
 int(rtc_test_int)()
 {
+    uint8_t rtc_bit_no = RTC_IRQ_LINE;
 
-    printf("Not yet implemented!\n");
-    return 1;
+    int ipc_status, r;
+    message msg;
+    
+    printf("Aqui 1\n");
+
+    if (rtc_subscribe_int(&rtc_bit_no) != 0)
+    {
+        printf("Error subscribing interrupts\n");
+        return 1;
+    }
+
+    printf("Aqui 2\n");
+
+    if (rtc_enable_interrupts() != 0)
+    {
+        printf("Error enabling interrupts\n");
+        return 1;
+    }
+
+    printf("Aqui 3\n");
+
+    if (rtc_define_alarm(10, 0, 0) != 0)
+    {
+        printf("Error defining alarm\n");
+        return 1;
+    }
+
+    printf("Subscribed interrupts\n");
+
+    while (true)
+    {
+        if ((r = driver_receive(ANY, &msg, &ipc_status)) != 0)
+        {
+            printf("driver_receive failed with: %d", r);
+            continue;
+        }
+        if (is_ipc_notify(ipc_status))
+        { /* received notification */
+            switch (_ENDPOINT_P(msg.m_source))
+            {
+            case HARDWARE: /* hardware interrupt notification */
+                if (msg.m_notify.interrupts & BIT(rtc_bit_no))
+                {
+                    printf("rtc_ih\n");
+                    rtc_ih();
+                }                
+                
+                break;
+            default:
+                break; /* no other notifications expected: do nothing */
+            }
+        }
+        else
+        { /* received a standard message, not a notification */
+            /* no standard messages expected: do nothing */
+        }
+    }
+
+    printf("Unsubscribing interrupts\n");
+
+    if (rtc_unsubscribe_int() != 0)
+    {
+        printf("Error unsubscribing interrupts\n");
+        return 1;
+    }
+
+    return 0;
 }
 
-int (proj_main_loop)(int argc, char **argv) {
-    //rtc_test_conf();
-    
-    rtc_test_date();
+int(proj_main_loop)(int argc, char **argv)
+{
+    // rtc_test_conf();
+
+    // rtc_test_date();
+
+    rtc_test_int();
 
     return 0;
 }
