@@ -6,7 +6,7 @@ int(rtc_subscribe_int)(uint8_t *bit_no)
 {
     rtc_hook_id = *bit_no;
 
-    if (sys_irqsetpolicy(RTC_IRQ_LINE, IRQ_REENABLE, &rtc_hook_id) != OK)
+    if (sys_irqsetpolicy(RTC_IRQ_LINE, (IRQ_REENABLE | IRQ_EXCLUSIVE), &rtc_hook_id) != OK)
     {
         printf("Error setting policy\n");
         return 1;
@@ -85,7 +85,7 @@ int(rtc_define_alarm)(uint8_t seconds, uint8_t minutes, uint8_t hours)
             return 1;
         }
 
-        if (sys_outb(RTC_DATA_REG, seconds) != OK)
+        if (sys_outb(RTC_DATA_REG, (BIT(7)| BIT(6))) != OK)
         {
             printf("Error writing to RTC_DATA_REG\n");
             return 1;
@@ -97,7 +97,7 @@ int(rtc_define_alarm)(uint8_t seconds, uint8_t minutes, uint8_t hours)
             return 1;
         }
 
-        if (sys_outb(RTC_DATA_REG, minutes) != OK)
+        if (sys_outb(RTC_DATA_REG, (BIT(7)| BIT(6))) != OK)
         {
             printf("Error writing to RTC_DATA_REG\n");
             return 1;
@@ -109,7 +109,7 @@ int(rtc_define_alarm)(uint8_t seconds, uint8_t minutes, uint8_t hours)
             return 1;
         }
 
-        if (sys_outb(RTC_DATA_REG, hours) != OK)
+        if (sys_outb(RTC_DATA_REG, (BIT(7)| BIT(6))) != OK)
         {
             printf("Error writing to RTC_DATA_REG\n");
             return 1;
