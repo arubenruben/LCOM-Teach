@@ -15,8 +15,6 @@ void(uart_ih)(void);
 
 uint8_t(uart_read_line_control)(uint16_t base_addr);
 
+uint16_t(uart_read_bit_rate)(uint16_t base_addr);
+
 int(uart_set_line_control)(uint16_t base_addr, uint32_t bits, uint32_t stop, long parity, uint32_t rate);
-
-uint8_t activate_dlab(uint8_t control_word);
-
-uint8_t deactivate_dlab(uint8_t control_word);

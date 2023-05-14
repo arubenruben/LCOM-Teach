@@ -59,3 +59,5 @@
 #define UART_DIVISOR_LATCH_LSB 0
 
 #define MAX_BIT_RATE 115200
+
+#define DLAB_BIT BIT(7)

@@ -40,6 +40,7 @@ int print_byte(uint8_t byte)
 int(ser_test_conf)(uint16_t base_addr)
 {
     uint8_t readed_value = 0x00;
+    uint16_t bit_rate = 0x00;
 
     if ((readed_value = uart_read_line_control(base_addr)) && readed_value == 1)
     {
@@ -47,9 +48,17 @@ int(ser_test_conf)(uint16_t base_addr)
         return 1;
     }
 
+    if ((bit_rate = uart_read_bit_rate(COM1_BASE_ADDR)) && bit_rate == 1)
+    {
+        printf("Error reading bit rate\n");
+        return 1;
+    }
+
     printf("Line control register value: ");
 
     print_byte(readed_value);
+
+    printf("Bit rate: %u\n", bit_rate);
 
     return 0;
 }
@@ -66,23 +75,20 @@ int(ser_test_set)(uint16_t base_addr, uint32_t bits, uint32_t stop, long parity,
 
 int(proj_main_loop)(int argc, char **argv)
 {
-
-    if (ser_test_set(COM1_BASE_ADDR, 8, 1, 'E', 9600) != 0)
-    {
-        printf("Error setting line control register\n");
-        return 1;
-    }  
-
-    if (ser_test_set(COM2_BASE_ADDR, 6, 2, 'O', 4800) != 0)
+    
+    if (ser_test_set(COM1_BASE_ADDR, 8, 1, 'E', 5000) != 0)
     {
         printf("Error setting line control register\n");
         return 1;
     }
 
-    
-    ser_test_conf(COM1_BASE_ADDR);
-    //ser_test_conf(COM2_BASE_ADDR);
-    
+    if (ser_test_conf(COM1_BASE_ADDR) != 0)
+    {
+        printf("Error reading line control register\n");
+        return 1;
+    }
+
+    // ser_test_conf(COM2_BASE_ADDR);
 
     return 0;
 }

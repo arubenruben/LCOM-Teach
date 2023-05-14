@@ -46,6 +46,53 @@ uint8_t(uart_read_line_control)(uint16_t base_addr)
     return read_byte;
 }
 
+uint16_t(uart_read_bit_rate)(uint16_t base_addr)
+{
+    uint16_t read_result = 0x00;
+    uint8_t read_byte = 0x00;
+    uint8_t control_word=0x00;
+
+    if((control_word = uart_read_line_control(base_addr))&& control_word == 1)
+    {
+        printf("Error reading line control register\n");
+        return 1;
+    }
+
+    control_word |= DLAB_BIT;
+
+    if (sys_outb(base_addr + UART_LINE_CONTROL, control_word) != 0)
+    {
+        printf("Error activating dlab\n");
+        return 1;
+    }
+
+    if (util_sys_inb(base_addr + UART_DIVISOR_LATCH_LSB, &read_byte) != 0)
+    {
+        printf("Error reading divisor latch lsb\n");
+        return 1;
+    }
+
+    read_result |= read_byte;
+
+    if (util_sys_inb(base_addr + UART_DIVISOR_LATCH_MSB, &read_byte) != 0)
+    {
+        printf("Error reading divisor latch msb\n");
+        return 1;
+    }
+
+    read_result |= (read_byte << 8);
+
+    control_word &= ~DLAB_BIT;
+
+    if (sys_outb(base_addr + UART_LINE_CONTROL, control_word) != 0)
+    {
+        printf("Error deactivating dlab\n");
+        return 1;
+    }
+
+    return MAX_BIT_RATE / read_result;
+}
+
 uint8_t line_control_word_length(uint32_t bits)
 {
     switch (bits)
@@ -122,27 +169,17 @@ uint8_t lines_control_parity_bits(long parity)
     return 0;
 }
 
-uint8_t activate_dlab(uint8_t control_word)
-{
-    return (control_word | BIT(7));
-}
-
-uint8_t deactivate_dlab(uint8_t control_word)
-{
-
-    return (control_word & ~BIT(7));
-}
-
 int(uart_set_bit_rate)(uint16_t base_addr, uint32_t rate)
 {
-    
-    if (rate > MAX_BIT_RATE){
+
+    if (rate > MAX_BIT_RATE)
+    {
         printf("Error: rate is too high\n");
         return 1;
     }
-    
-    uint32_t b_value = rate / MAX_BIT_RATE;
-    
+
+    uint16_t reg_value = MAX_BIT_RATE / rate;
+
     uint8_t status = uart_read_line_control(base_addr);
 
     if (status == 1)
@@ -157,9 +194,9 @@ int(uart_set_bit_rate)(uint16_t base_addr, uint32_t rate)
         return 1;
     }
 
-    uint8_t lsb_rate = (uint8_t)b_value;
+    uint8_t lsb_rate = (uint8_t)reg_value;
 
-    uint8_t msb_rate = (uint8_t)(b_value >> 8);
+    uint8_t msb_rate = (uint8_t)(reg_value >> 8);
 
     if (sys_outb(base_addr + UART_DIVISOR_LATCH_LSB, lsb_rate) != OK)
     {
@@ -186,7 +223,7 @@ int(uart_set_line_control)(uint16_t base_addr, uint32_t bits, uint32_t stop, lon
 
     control_byte |= lines_control_parity_bits(parity);
 
-    control_byte = activate_dlab(control_byte);
+    control_byte |= DLAB_BIT;
 
     if (sys_outb(base_addr + UART_LINE_CONTROL, control_byte) != OK)
     {
@@ -200,7 +237,7 @@ int(uart_set_line_control)(uint16_t base_addr, uint32_t bits, uint32_t stop, lon
         return 1;
     }
 
-    control_byte = deactivate_dlab(control_byte);
+    control_byte &= ~DLAB_BIT;
 
     if (sys_outb(base_addr + UART_LINE_CONTROL, control_byte) != OK)
     {
