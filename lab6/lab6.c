@@ -80,8 +80,6 @@ int(rtc_test_int)()
 
     int ipc_status, r;
     message msg;
-    
-    printf("Aqui 1\n");
 
     if (rtc_subscribe_int(&rtc_bit_no) != 0)
     {
@@ -89,25 +87,24 @@ int(rtc_test_int)()
         return 1;
     }
 
-    printf("Aqui 2\n");
-
     if (rtc_enable_interrupts() != 0)
     {
         printf("Error enabling interrupts\n");
         return 1;
     }
-
-    printf("Aqui 3\n");
-
-    if (rtc_define_alarm(10, 0, 0) != 0)
+    /*
+    if (rtc_define_alarm(5, 0, 0) != 0)
     {
         printf("Error defining alarm\n");
         return 1;
     }
+    */
 
     printf("Subscribed interrupts\n");
 
-    while (true)
+    uint8_t counter_interrupts = 10;
+
+    while (counter_interrupts > 0)
     {
         if ((r = driver_receive(ANY, &msg, &ipc_status)) != 0)
         {
@@ -121,10 +118,11 @@ int(rtc_test_int)()
             case HARDWARE: /* hardware interrupt notification */
                 if (msg.m_notify.interrupts & BIT(rtc_bit_no))
                 {
-                    printf("rtc_ih\n");
                     rtc_ih();
-                }                
-                
+
+                    counter_interrupts--;
+                }
+
                 break;
             default:
                 break; /* no other notifications expected: do nothing */
@@ -136,7 +134,11 @@ int(rtc_test_int)()
         }
     }
 
-    printf("Unsubscribing interrupts\n");
+    if (rtc_disable_interrupts() != 0)
+    {
+        printf("Error disabling interrupts\n");
+        return 1;
+    }
 
     if (rtc_unsubscribe_int() != 0)
     {

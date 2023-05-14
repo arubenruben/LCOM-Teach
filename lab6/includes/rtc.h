@@ -18,6 +18,8 @@ int(rtc_subscribe_int)(uint8_t *bit_no);
 
 int(rtc_enable_interrupts)(void);
 
+int(rtc_disable_interrupts)(void);
+
 int(rtc_unsubscribe_int)(void);
 
 int(rtc_define_alarm)(uint8_t seconds, uint8_t minutes, uint8_t hours);

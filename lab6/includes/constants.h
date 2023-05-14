@@ -44,6 +44,8 @@
 
 #define RTC_AIE_BIT_MASK BIT(5)
 
+#define RTC_UIE_BIT_MASK BIT(4)
+
 #define RTC_SECONDS_ALARM 0x01
 
 #define RTC_MINUTES_ALARM 0x03
