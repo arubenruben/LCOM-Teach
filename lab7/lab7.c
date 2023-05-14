@@ -1,5 +1,7 @@
 #include "includes/lab7.h"
 
+extern uint8_t data;
+
 int main(int argc, char *argv[])
 {
     // sets the language of LCF messages (can be either EN-US or PT-PT)
@@ -73,18 +75,87 @@ int(ser_test_set)(uint16_t base_addr, uint32_t bits, uint32_t stop, long parity,
     return 0;
 }
 
-int(proj_main_loop)(int argc, char **argv)
+int(ser_test_int)(uint16_t base_addr, uint32_t bits, uint32_t stop, long parity, uint32_t rate)
 {
-    
-    if (ser_test_set(COM1_BASE_ADDR, 8, 1, 'E', 5000) != 0)
+
+    uint8_t uart_bit_no = IRQ_COM1;
+    uint8_t counter_interrupts = 10;
+
+    int ipc_status, r;
+    message msg;
+
+    if (uart_set_line_control(base_addr, bits, stop, parity, rate) != 0)
     {
         printf("Error setting line control register\n");
         return 1;
     }
 
-    if (ser_test_conf(COM1_BASE_ADDR) != 0)
+    if (uart_subscribe_int(&uart_bit_no) != 0)
     {
-        printf("Error reading line control register\n");
+        printf("Error subscribing interrupts\n");
+        return 1;
+    }
+
+    if (uart_enable_int(base_addr) != 0)
+    {
+        printf("Error enabling interrupts\n");
+        return 1;
+    }
+
+    uart_read_data(&data);
+
+    while (counter_interrupts > 0)
+    {
+        if ((r = driver_receive(ANY, &msg, &ipc_status)) != 0)
+        {
+            printf("driver_receive failed with: %d", r);
+            continue;
+        }
+        if (is_ipc_notify(ipc_status))
+        { /* received notification */
+            switch (_ENDPOINT_P(msg.m_source))
+            {
+            case HARDWARE: /* hardware interrupt notification */
+                if (msg.m_notify.interrupts & BIT(uart_bit_no))
+                {
+                    uart_ih();
+
+                    counter_interrupts--;
+                }
+
+                break;
+            default:
+                break; /* no other notifications expected: do nothing */
+            }
+        }
+        else
+        { /* received a standard message, not a notification */
+            /* no standard messages expected: do nothing */
+        }
+    }
+
+    if (uart_disable_int(base_addr) != 0)
+    {
+        printf("Error disabling interrupts\n");
+        return 1;
+    }
+
+    if (uart_unsubscribe_int() != 0)
+    {
+        printf("Error unsubscribing interrupts\n");
+        return 1;
+    }
+
+    printf("Not implemented yet!\n");
+    return 1;
+}
+
+int(proj_main_loop)(int argc, char **argv)
+{
+
+    if (ser_test_int(COM1_BASE_ADDR, 8, 1, 'E', 9600) != 0)
+    {
+        printf("Error setting line control register\n");
         return 1;
     }
 
